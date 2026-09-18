@@ -1,282 +1,244 @@
-const templateForm = document.querySelector('#template-form');
-const taskForm = document.querySelector('#task-form');
-const result = document.querySelector('#result');
-const draft = document.querySelector('#draft');
-const submitTemplate = document.querySelector('#submit-template');
-const submitTask = document.querySelector('#submit-task');
-const templateWorkspace = document.querySelector('#template-workspace');
-const taskWorkspace = document.querySelector('#task-workspace');
-const relationshipField = document.querySelector('#relationship-field');
-const inputHeading = document.querySelector('#input-heading');
-const outputHeading = document.querySelector('#output-heading');
+/* Workbench for the five endpoints. Each renders its own shape; nothing is chained. */
+const $ = (id) => document.getElementById(id);
+const templateForm = $("template-form"), taskForm = $("task-form");
+const result = $("result"), draft = $("draft");
 
 const MODES = {
-  classify: { label: 'Classify template', icon: 'scan-text', output: 'Predicted Meta category', input: 'Template' },
-  convert: { label: 'Convert to utility', icon: 'wand-sparkles', output: 'Conversion', input: 'Template to convert' },
+  classify: {path: "/api/predict",  label: "Classify",              icon: "scan-text",
+             heading: "Predicted Meta category",
+             hint: "Runs locally. No text leaves this machine."},
+  explain:  {path: "/api/explain",  label: "Explain",               icon: "message-square-quote",
+             heading: "Why this category",
+             hint: "Asks the model to cite the policy clauses it applied. A few seconds."},
+  convert:  {path: "/api/convert",  label: "Convert to utility",    icon: "repeat",
+             heading: "Conversion",
+             hint: "Rewrites and re-classifies until the classifier accepts it, or the rounds run out."},
+  split:    {path: "/api/split",    label: "Split",                 icon: "split",
+             heading: "Split result",
+             hint: "For a template carrying both a service update and an offer: the offer moves to its own marketing template rather than being deleted."},
 };
-let mode = 'classify';
+let mode = "classify";
 
-const element = (tag, properties = {}) => Object.assign(document.createElement(tag), properties);
-const paragraph = (text, className = 'muted') => element('p', { className, textContent: text });
-const percent = value => value == null ? 'Not applicable' : `${(value * 100).toFixed(1)}%`;
+const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const marked = (s) => esc(s).replace(/\{\{[^}]{0,60}\}\}/g, (m) => `<span class="ph">${m}</span>`);
+const pct = (v) => (typeof v === "number" ? v.toFixed(3) : "—");
+const icons = () => window.lucide && window.lucide.createIcons();
 
-function icons() { window.lucide?.createIcons(); }
-icons();
+function rows(pairs) {
+  const shown = pairs.filter(([, v]) => v !== null && v !== undefined && v !== "");
+  if (!shown.length) return "";
+  return `<dl>${shown.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>`;
+}
 
-function definitionList(rows) {
-  const list = element('dl');
-  for (const [label, value] of rows) {
-    const row = element('div');
-    row.append(element('dt', { textContent: label }), element('dd', { textContent: value }));
-    list.append(row);
+function templateCard(title, body, cls = "") {
+  if (!body) return "";
+  return `<div class="card ${cls}"><h3>${esc(title)}</h3><p class="body-text">${marked(body)}</p></div>`;
+}
+
+function jsonBlock(label, value) {
+  if (!value) return "";
+  return `<h3 class="sec">${esc(label)}</h3><pre class="json">${esc(JSON.stringify(value, null, 2))}</pre>`;
+}
+
+/* ---------- renderers, one per endpoint ---------- */
+
+function renderClassify(d) {
+  return `<p class="verdict ${esc(d.category)}">${esc(d.category)}</p>
+    <p class="sub">${esc(d.score_label || "Utility probability")}: <b>${pct(d.utility_probability)}</b></p>
+    ${rows([["Band", d.band], ["Model", d.model]])}
+    <p class="meta-line">${esc(d.notice || "")}</p>`;
+}
+
+function renderExplain(d) {
+  if (!d.available) {
+    return `<p class="error">${esc(d.reason || "The reviewer is not available.")}</p>`;
   }
-  return list;
+  const clauses = (d.clauses || [])
+    .map((c) => `<li><strong>${esc(c.id)}</strong>${esc(c.text)}</li>`).join("");
+  return `<p class="verdict ${esc(d.category)}">${esc(d.category)}</p>
+    ${d.agrees === false
+      ? `<p class="flag">The local classifier and this reading disagree. On measured disagreements
+         each was right about half the time, so neither is authoritative here &mdash; a human should look.</p>`
+      : ""}
+    <p class="rationale">${esc(d.rationale || "")}</p>
+    ${clauses ? `<h3 class="sec">Clauses applied</h3><ul class="clauses">${clauses}</ul>` : ""}
+    <p class="meta-line">${esc(d.limitation || d.notice || "")}</p>`;
 }
 
-function templateCard(title, template) {
-  const card = element('div', { className: 'card' });
-  card.append(element('h3', { textContent: title }));
-  for (const [key, label] of [['header', 'Header'], ['footer', 'Footer'], ['buttons', 'Buttons']]) {
-    if (template[key]) card.append(element('p', { className: 'component', textContent: `${label}: ${template[key]}` }));
+function renderConvert(d) {
+  if (d.already_utility) {
+    return `<p class="verdict UTILITY">Already utility</p>
+      <p class="sub">No rewrite attempted &mdash; the classifier reads the template as utility at
+        <b>${pct(d.confidence)}</b>.</p>
+      ${templateCard("Template, unchanged", (d.template || {}).body, "good")}`;
   }
-  card.append(element('p', { className: 'body-text', textContent: template.body || '' }));
-  return card;
+  const trail = (d.rounds || []).map((r) => {
+    if (r.outcome === "refused") {
+      return `<div class="round"><span class="n">round ${r.round}</span>
+        <span class="blocked">model refused</span>
+        <span class="issue">${esc(r.reason || "")}</span></div>`;
+    }
+    const blocked = r.gates_passed === false;
+    return `<div class="round"><span class="n">round ${r.round}</span>
+      <span class="cat ${esc(r.category)}">${esc(r.category)}</span>
+      <span class="n">${pct(r.confidence)}</span>
+      ${blocked ? `<span class="blocked">gates blocked</span>` : ""}
+      ${(r.issues || []).slice(0, 2).map((i) => `<span class="issue">${esc(i)}</span>`).join("")}</div>`;
+  }).join("");
+
+  if (!d.converted) {
+    return `<p class="verdict MARKETING">Not converted</p>
+      <p class="sub">${esc(d.reason || "")}</p>
+      ${trail ? `<h3 class="sec">Rounds tried</h3><div class="trail">${trail}</div>` : ""}`;
+  }
+  return `<p class="verdict UTILITY">Converted</p>
+    <p class="sub">Utility score <b>${pct(d.confidence_before)}</b> &rarr; <b>${pct(d.confidence)}</b>
+      over ${(d.rounds || []).length} round${(d.rounds || []).length === 1 ? "" : "s"}.</p>
+    ${templateCard("Rewritten template", (d.template || {}).body, "good")}
+    ${(d.reasoning || []).map((r) => `<p class="meta-line">${esc(r)}</p>`).join("")}
+    ${trail ? `<h3 class="sec">Rounds</h3><div class="trail">${trail}</div>` : ""}
+    ${jsonBlock("Template JSON", d.template_json)}
+    <p class="meta-line">${esc(d.notice || "")}</p>`;
 }
 
-function spliceAt(body) {
-  // A greeting well past the opening usually means a second template was pasted
-  // on top of the first. Returns where the second one starts, or -1.
-  const greeting = /\b(?:hi|hello|dear|hey)\b[\s,]/gi;
-  const found = [...body.matchAll(greeting)].map(m => m.index).filter(index => index > 60);
-  return found.length ? found[found.length - 1] : -1;
+function renderSplit(d) {
+  const findings = (d.findings || [])
+    .map((f) => `<li><strong>${esc(f.code)}</strong>${esc(f.message)}</li>`).join("");
+  const missing = (d.missing_context || [])
+    .map((m) => `<li>${esc(m)}</li>`).join("");
+  return `<p class="verdict ${d.utility ? "UTILITY" : "NEUTRAL"}">${esc((d.verdict || "").replace(/_/g, " "))}</p>
+    <p class="sub">${esc(d.reason || "")}</p>
+    ${templateCard("Utility part", (d.utility || {}).body, "good")}
+    ${templateCard("Moved to a marketing template", (d.split_off || {}).body, "promo")}
+    ${findings ? `<h3 class="sec">Promotional findings</h3><ul class="clauses">${findings}</ul>` : ""}
+    ${missing ? `<h3 class="sec">Context still needed</h3><ul class="clauses">${missing}</ul>` : ""}
+    ${jsonBlock("Utility template JSON", d.utility_json)}
+    ${jsonBlock("Marketing template JSON", d.split_off_json)}
+    <p class="meta-line">${esc(d.notice || "")}</p>`;
 }
 
-function looksSpliced(body) {
-  return spliceAt(body) !== -1;
+function renderDraft(d) {
+  if (!d.possible) {
+    return `<p class="verdict MARKETING">Declined</p>
+      <p class="rationale">${esc(d.reason || "")}</p>
+      <p class="meta-line">A promotional task is refused rather than dressed up as a service
+        message. Describe an event that has already happened to the recipient.</p>`;
+  }
+  const t = d.template || {};
+  // The form's approval rate is shown only when the draft actually belongs to that
+  // form; below the match threshold the API returns null and there is no rate to quote.
+  const evidence = d.form_matched && typeof d.form_approval_rate === "number"
+    ? `${(d.form_approval_rate * 100).toFixed(0)}% of templates in this form were approved`
+    : "No closely matching approved form";
+  return `<p class="verdict UTILITY">${esc(t.name || "Drafted")}</p>
+    ${t.buttons ? `<p class="sub">Buttons: ${esc(t.buttons)}</p>` : ""}
+    ${templateCard("Draft", t.body, "good")}
+    ${rows([["Utility score", pct(d.score)], ["Precedent", evidence], ["Method", d.method]])}
+    ${d.evidence ? `<p class="meta-line">${esc(d.evidence)}</p>` : ""}
+    ${d.reason ? `<p class="meta-line">${esc(d.reason)}</p>` : ""}
+    ${jsonBlock("Template JSON", d.template_json)}
+    <p class="meta-line">${esc(d.notice || "")}</p>`;
 }
 
-function checkSplice() {
-  const warning = document.querySelector('#splice-warning');
-  if (!warning) return;
-  const index = spliceAt(templateForm.body.value);
-  warning.hidden = index === -1;
-  if (index === -1) return;
-  // A warning that can only be read is one that gets classified straight past,
-  // so it carries the fix as a button.
-  warning.replaceChildren(
-    element('span', { textContent: 'This looks like two templates pasted together — a greeting starts partway through the body. Judged as one message, the mixed content reads as marketing.' }),
-    element('button', { type: 'button', className: 'splice-fix', id: 'splice-fix',
-                        textContent: 'Keep only the second message' }));
-  document.querySelector('#splice-fix').onclick = () => {
-    templateForm.body.value = templateForm.body.value.slice(index).trim();
-    checkSplice();
-    templateForm.body.focus();
-  };
-}
+const RENDER = {classify: renderClassify, explain: renderExplain,
+                convert: renderConvert, split: renderSplit};
 
-function jsonBlock(title, payload) {
-  const wrap = element('div');
-  wrap.append(element('h3', { textContent: title }),
-              element('pre', { className: 'json', textContent: JSON.stringify(payload, null, 2) }));
-  return wrap;
-}
-
-function applyJsonMode() {
-  const on = document.querySelector('#json-mode')?.checked;
-  document.querySelector('#json-field').hidden = !on;
-  // The five component fields and the pasted record are two ways to say the same
-  // thing, so only one is shown at a time.
-  ['header', 'body', 'footer', 'buttons'].forEach(name => {
-    const field = templateForm[name]?.closest('label');
-    if (field) field.hidden = !!on;
-  });
-  if (on) document.querySelector('#splice-warning').hidden = true;
-}
+/* ---------- mode switching ---------- */
 
 function setMode(next) {
   mode = next;
-  document.querySelectorAll('[data-mode]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.mode === next)));
-  const onTask = next === 'generate';
-  taskWorkspace.hidden = !onTask;
-  templateWorkspace.hidden = onTask;
-  if (!onTask) {
-    const config = MODES[next];
-    inputHeading.textContent = config.input;
-    outputHeading.textContent = config.output;
-    submitTemplate.querySelector('span').textContent = config.label;
-    // Lucide replaces the <i data-lucide> placeholder with an <svg>, so after the
-    // first paint the icon has to be re-created from a fresh placeholder.
-    const glyph = submitTemplate.querySelector('i, svg');
-    if (glyph) {
-      // `dataset` is a read-only accessor, so it has to be set as an attribute.
-      const placeholder = document.createElement('i');
-      placeholder.setAttribute('data-lucide', config.icon);
-      glyph.replaceWith(placeholder);
-    }
-    relationshipField.hidden = next !== 'convert';
-    document.querySelector('#meta-category-field').hidden = next !== 'convert';
-    document.querySelector('#json-toggle').hidden = next !== 'convert';
-    if (next !== 'convert') {
-      const box = document.querySelector('#json-mode');
-      if (box) box.checked = false;
-    }
-    applyJsonMode();
-    result.replaceChildren(paragraph('Nothing checked yet.'));
-    icons();
-  }
+  const generating = next === "generate";
+  $("template-workspace").hidden = generating;
+  $("task-workspace").hidden = !generating;
+  document.querySelectorAll(".modes button").forEach((b) =>
+    b.setAttribute("aria-selected", String(b.dataset.mode === next)));
+  if (generating) return;
+
+  const spec = MODES[next];
+  $("output-heading").textContent = spec.heading;
+  $("mode-hint").textContent = spec.hint;
+  const button = $("submit-template");
+  button.querySelector("span").textContent = spec.label;
+  button.querySelector("i,svg")?.setAttribute("data-lucide", spec.icon);
+  // Only conversion loops, and only splitting asks about the recipient relationship.
+  $("rounds-field").hidden = next !== "convert";
+  $("relationship-field").hidden = next !== "split";
+  result.innerHTML = `<p class="muted">Nothing yet.</p>`;
+  icons();
 }
 
-document.querySelectorAll('[data-mode]').forEach(tab => { tab.onclick = () => setMode(tab.dataset.mode); });
-templateForm.onreset = () => {
-  result.replaceChildren(paragraph('Nothing checked yet.'));
-  const warning = document.querySelector('#splice-warning');
-  if (warning) warning.hidden = true;
-};
-templateForm.body.addEventListener('input', checkSplice);
-document.querySelector('#json-mode')?.addEventListener('change', applyJsonMode);
-taskForm.onreset = () => draft.replaceChildren(paragraph('No draft yet.'));
+document.querySelectorAll(".modes button").forEach((b) =>
+  b.addEventListener("click", () => setMode(b.dataset.mode)));
 
-async function send(url, payload, target, button, busyLabel, render) {
-  const original = button.querySelector('span').textContent;
-  button.disabled = true;
-  button.querySelector('span').textContent = busyLabel;
-  target.replaceChildren(paragraph('Working...'));
+$("json-mode").addEventListener("change", (e) => {
+  $("json-field").hidden = !e.target.checked;
+  $("plain-fields").hidden = e.target.checked;
+  templateForm.body.required = !e.target.checked;
+});
+
+/* ---------- submission ---------- */
+
+async function send(path, payload, target, render, button, busyLabel) {
+  const span = button.querySelector("span"), original = span.textContent;
+  button.disabled = true; span.textContent = busyLabel;
+  target.innerHTML = `<p class="muted">Working…</p>`;
   try {
-    const response = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+    const response = await fetch(path, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(payload),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Check the fields and try again.');
-    target.replaceChildren(...render(data));
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      // FastAPI returns `detail` as a string for our own errors and an array of
+      // field objects for schema validation, so both shapes have to render.
+      const detail = data && data.detail;
+      const message = Array.isArray(detail)
+        ? detail.map((d) => `${(d.loc || []).slice(-1)}: ${d.msg}`).join("; ")
+        : (detail || `Request failed (${response.status}).`);
+      target.innerHTML = `<p class="error">${esc(message)}</p>`;
+      return;
+    }
+    target.innerHTML = render(data);
   } catch (error) {
-    target.replaceChildren(element('p', { className: 'error', textContent: error.message }));
+    target.innerHTML = `<p class="error">${esc(error.message || "Could not reach the server.")}</p>`;
   } finally {
-    button.disabled = false;
-    button.querySelector('span').textContent = original;
+    button.disabled = false; span.textContent = original; icons();
   }
 }
 
-function renderPrediction(data) {
-  const category = element('p', { className: `category ${data.category === 'UTILITY' ? 'UTILITY' : 'MARKETING'}`, textContent: data.category });
-  return [category, definitionList([
-    [data.score_label || 'Utility score', percent(data.utility_probability)],
-    ['Review band', data.band || 'Not available'],
-    ['Model', data.model],
-  ]), paragraph(data.notice, 'notice'),
-  element('div', { id: 'why', className: 'why' })];
-}
+templateForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const form = new FormData(templateForm);
+  const payload = {};
+  for (const [k, v] of form.entries()) {
+    if (k === "max_rounds") payload[k] = Number(v);
+    else if (k === "relationship_confirmed") payload[k] = true;
+    else if (v) payload[k] = v;
+  }
+  if ($("json-mode").checked) {
+    ["header", "body", "footer", "buttons", "requested_category"].forEach((k) => delete payload[k]);
+  } else {
+    delete payload.template_json;
+  }
+  if (mode !== "convert") delete payload.max_rounds;
+  send(MODES[mode].path, payload, result, RENDER[mode], $("submit-template"),
+       mode === "classify" ? "Classifying…" : "Working…");
+});
 
-function renderExplanation(data) {
-  const box = document.querySelector('#why');
-  if (!box) return;
-  if (!data.available) {
-    box.replaceChildren(element('h3', { textContent: 'Why' }), paragraph(data.reason || data.notice));
-    return;
-  }
-  const nodes = [element('h3', { textContent: 'Why' })];
-  if (data.agrees === false) {
-    nodes.push(element('p', {
-      className: 'disagree',
-      textContent: `The explaining model reads this as ${data.category}, the scoring model as ${data.local_category}. They disagree about as often as they are each right, so treat this one as needing a human.`,
-    }));
-  }
-  if (data.rationale) nodes.push(element('p', { className: 'rationale', textContent: data.rationale }));
-  if (data.clauses?.length) {
-    const list = element('ul', { className: 'clauses' });
-    data.clauses.forEach(c => {
-      const item = element('li');
-      item.append(element('strong', { textContent: c.id }), document.createTextNode(c.text ? ` — ${c.text}` : ''));
-      list.append(item);
-    });
-    nodes.push(element('p', { className: 'component', textContent: 'Policy clauses cited' }), list);
-  }
-  nodes.push(paragraph(data.notice, 'notice'));
-  box.replaceChildren(...nodes);
-}
+taskForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const form = new FormData(taskForm);
+  const payload = {task: form.get("task")};
+  if (form.get("context")) payload.context = form.get("context");
+  send("/api/generate", payload, draft, renderDraft, $("submit-task"), "Drafting…");
+});
 
-async function explain(payload) {
-  const box = document.querySelector('#why');
-  if (box) box.replaceChildren(element('h3', { textContent: 'Why' }), paragraph('Asking the model for its reasoning...'));
-  try {
-    const response = await fetch('/api/explain', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    });
-    renderExplanation(await response.json());
-  } catch (error) {
-    renderExplanation({ available: false, reason: error.message });
-  }
-}
+templateForm.addEventListener("reset", () => {
+  result.innerHTML = `<p class="muted">Nothing yet.</p>`;
+});
+taskForm.addEventListener("reset", () => {
+  draft.innerHTML = `<p class="muted">Nothing yet.</p>`;
+});
 
-function renderConversion(data) {
-  const nodes = [element('p', { className: 'category', textContent: (data.verdict || '').replace(/_/g, ' ') })];
-  if (data.disputed_by_meta || data.disputed_by_model) {
-    nodes.push(element('p', { className: 'disagree', textContent: data.reason }));
-  } else if (data.reason) {
-    nodes.push(paragraph(data.reason, 'notice'));
-  }
-  const before = data.before?.available
-    ? (data.before.utility_probability == null
-        ? 'Not scored — submitted as marketing'
-        : percent(data.before.utility_probability))
-    : 'Not available';
-  const after = data.after?.available ? percent(data.after.utility_probability) : null;
-  nodes.push(definitionList([['Utility score now', before], ...(after ? [['After the change', after]] : []), ['Method', data.method || '—']]));
-  if (data.missing_context?.length) {
-    const list = element('ul', { className: 'clauses' });
-    data.missing_context.forEach(m => list.append(element('li', { textContent: m })));
-    nodes.push(element('h3', { textContent: 'What is missing' }), list);
-  }
-  if (data.utility) nodes.push(templateCard('Utility version', data.utility));
-  if (data.split_off) nodes.push(templateCard('Promotional part, send separately as marketing', { body: data.split_off.body }));
-  if (data.removed?.length) {
-    const list = element('ul', { className: 'removed' });
-    data.removed.forEach(r => list.append(element('li', { textContent: `${r.component}: ${r.text}` })));
-    nodes.push(element('h3', { textContent: 'Removed' }), list);
-  }
-  if (data.needs_human && data.ambiguous?.length) {
-    const list = element('ul', { className: 'removed' });
-    data.ambiguous.forEach(a => list.append(element('li', { textContent: a.text })));
-    nodes.push(element('h3', { textContent: 'Kept for human review' }), list);
-  }
-  if (data.utility_json) nodes.push(jsonBlock('Utility version as JSON', data.utility_json));
-  if (data.split_off_json) nodes.push(jsonBlock('Promotional part as JSON', data.split_off_json));
-  nodes.push(paragraph(data.notice, 'notice'));
-  return nodes;
-}
-
-function renderDraft(data) {
-  if (!data.possible) {
-    return [element('p', { className: 'category MARKETING', textContent: (data.verdict || 'NOT POSSIBLE').replace(/_/g, ' ') }),
-            paragraph(data.reason || '', 'notice')];
-  }
-  const nodes = [templateCard(data.template.name || 'Utility draft', data.template),
-                 definitionList([['Service event', data.purpose || 'unknown'],
-                                 ['Utility score', percent(data.score?.utility_probability)],
-                                 ['Method', data.method || '—']])];
-  if (data.findings?.length) {
-    nodes.push(element('p', { className: 'error', textContent: `Promotional wording flagged: ${data.findings.map(f => f.code).join(', ')}. Edit before submitting.` }));
-  }
-  if (data.reason) nodes.push(paragraph(data.reason, 'notice'));
-  if (data.template_json && document.querySelector('#json-mode-task')?.checked) {
-    nodes.push(jsonBlock('Draft as JSON', data.template_json));
-  }
-  nodes.push(paragraph(data.notice, 'notice'));
-  return nodes;
-}
-
-templateForm.onsubmit = event => {
-  event.preventDefault();
-  const payload = Object.fromEntries(new FormData(templateForm));
-  payload.relationship_confirmed = templateForm.relationship_confirmed?.checked ?? false;
-  if (mode === 'classify') {
-    // The explanation is a second, slower call so the verdict is never held up by it.
-    return send('/api/predict', payload, result, submitTemplate, 'Classifying...', renderPrediction)
-      .then(() => explain(payload));
-  }
-  return send('/api/convert', payload, result, submitTemplate, 'Converting...', renderConversion);
-};
-
-taskForm.onsubmit = event => {
-  event.preventDefault();
-  return send('/api/generate', Object.fromEntries(new FormData(taskForm)), draft, submitTask, 'Drafting...', renderDraft);
-};
+setMode("classify");

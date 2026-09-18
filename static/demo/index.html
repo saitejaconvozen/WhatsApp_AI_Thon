@@ -3,62 +3,95 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Template Lab | Classifier</title>
+  <title>Template Lab | Workbench</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/assets/demo.css">
   <script src="/assets/lucide.min.js" defer></script>
   <script src="/assets/demo.js" defer></script>
 </head>
 <body>
-  <header><a class="brand" href="/"><i data-lucide="messages-square"></i>Template Lab</a><a href="/results/">Evaluation results <i data-lucide="arrow-up-right"></i></a></header>
+  <header>
+    <a class="brand" href="/"><i data-lucide="messages-square"></i>Template Lab</a>
+    <a href="/results/">Evaluation results <i data-lucide="arrow-up-right"></i></a>
+  </header>
   <main>
-    <div class="title"><div><p class="eyebrow">WHATSAPP / META CATEGORY</p><h1>Template workbench</h1></div><span class="status">Research model</span></div>
+    <div class="title">
+      <div><p class="eyebrow">WHATSAPP / META CATEGORY</p><h1>Template workbench</h1></div>
+      <span class="status">Research model</span>
+    </div>
+
     <nav class="modes" role="tablist" aria-label="What do you want to do?">
       <button role="tab" data-mode="classify" aria-selected="true"><i data-lucide="scan-text"></i>Classify</button>
-      <button role="tab" data-mode="convert" aria-selected="false"><i data-lucide="wand-sparkles"></i>Convert to utility</button>
+      <button role="tab" data-mode="explain"  aria-selected="false"><i data-lucide="message-square-quote"></i>Explain</button>
+      <button role="tab" data-mode="convert"  aria-selected="false"><i data-lucide="repeat"></i>Convert</button>
+      <button role="tab" data-mode="split"    aria-selected="false"><i data-lucide="split"></i>Split</button>
       <button role="tab" data-mode="generate" aria-selected="false"><i data-lucide="sparkles"></i>Generate</button>
     </nav>
 
+    <!-- Classify / Explain / Convert / Split all take a template -->
     <div class="workspace" id="template-workspace">
       <section>
-        <div class="section-row"><h2 id="input-heading">Template</h2>
-          <label class="toggle" id="json-toggle" hidden><input type="checkbox" id="json-mode"> Paste JSON instead</label></div>
+        <div class="section-row">
+          <h2 id="input-heading">Template</h2>
+          <label class="toggle"><input type="checkbox" id="json-mode"> Paste JSON instead</label>
+        </div>
+        <p class="hint" id="mode-hint"></p>
         <form id="template-form">
-          <label>Category submitted to Meta<select name="requested_category"><option value="UTILITY" selected>Utility</option><option value="MARKETING">Marketing</option><option value="UNKNOWN">Not specified</option></select></label>
-          <label id="meta-category-field" hidden>Category recorded by Meta<select name="meta_category"><option value="UNKNOWN" selected>Not decided / unknown</option><option value="MARKETING">Marketing</option><option value="UTILITY">Utility</option><option value="AUTHENTICATION">Authentication</option></select></label>
-          <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
-          <label id="json-field" hidden>Template JSON<textarea name="template_json" rows="8" maxlength="20000" placeholder='Paste the full template record, e.g. {"templateName": "...", "messageBody": {"body": "..."}}'></textarea></label>
-          <p id="splice-warning" class="splice" hidden></p>
-          <label>Body<textarea name="body" maxlength="6000" rows="7" required placeholder="Your invoice {{invoice_id}} is due on {{due_date}}."></textarea></label>
-          <label>Footer<input name="footer" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
-          <label>Buttons<textarea name="buttons" maxlength="1000" rows="2" placeholder="View invoice"></textarea></label>
-          <label class="inline" id="relationship-field" hidden><input type="checkbox" name="relationship_confirmed"> This message follows a real transaction with the recipient</label>
-          <div class="actions"><button type="submit" id="submit-template"><i data-lucide="scan-text"></i><span>Classify template</span></button><button class="secondary wide" type="reset" title="Clear template"><i data-lucide="rotate-ccw"></i><span>Clear</span></button></div>
+          <label id="json-field" hidden>Template JSON
+            <textarea name="template_json" rows="8" maxlength="20000"
+              placeholder='{"templateName":"...","messageBody":{"body":"..."}}'></textarea></label>
+          <div id="plain-fields">
+            <label>Category submitted to Meta
+              <select name="requested_category">
+                <option value="UTILITY" selected>Utility</option>
+                <option value="MARKETING">Marketing</option>
+                <option value="UNKNOWN">Not specified</option>
+              </select></label>
+            <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+            <label>Body<textarea name="body" maxlength="6000" rows="7" required
+              placeholder="Your invoice {{invoice_id}} is due on {{due_date}}."></textarea></label>
+            <label>Footer<input name="footer" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+            <label>Buttons<textarea name="buttons" maxlength="1000" rows="2" placeholder="View invoice"></textarea></label>
+          </div>
+          <label id="rounds-field" hidden>Maximum rewrite rounds
+            <input name="max_rounds" type="number" min="1" max="6" value="4"></label>
+          <label class="inline" id="relationship-field" hidden>
+            <input type="checkbox" name="relationship_confirmed">
+            This message follows a real transaction with the recipient</label>
+          <div class="actions">
+            <button class="go" type="submit" id="submit-template"><i data-lucide="scan-text"></i><span>Classify</span></button>
+            <button class="secondary" type="reset">Clear</button>
+          </div>
         </form>
       </section>
-      <section class="prediction"><h2 id="output-heading">Predicted Meta category</h2><div id="result" aria-live="polite"><p class="muted">No prediction yet.</p></div></section>
+      <section class="panel"><h2 id="output-heading">Result</h2>
+        <div id="result" aria-live="polite"><p class="muted">Nothing yet.</p></div></section>
     </div>
 
+    <!-- Generate takes a description of the event, not a template -->
     <div class="workspace" id="task-workspace" hidden>
       <section>
-        <h2>What do you need to tell the customer?</h2>
+        <h2>What has happened that the customer needs told?</h2>
+        <p class="hint">Describe the event in plain words &mdash; &ldquo;their refund was processed&rdquo;.
+          Do not paste a template here; this field is a description, not wording to edit.</p>
         <form id="task-form">
-          <label>Task<textarea name="task" maxlength="2000" rows="4" required placeholder="Tell the tenant their rent receipt is generated for this month"></textarea></label>
-          <label class="toggle inline"><input type="checkbox" id="json-mode-task"> Return the draft as JSON too</label>
-          <label>Business context<textarea name="context" maxlength="4000" rows="3" placeholder="The transaction and facts to preserve. Optional."></textarea></label>
-          <label>Service event<select name="purpose">
-            <option value="" selected>Detect automatically</option>
-            <option value="billing">Billing</option><option value="order">Order</option>
-            <option value="appointment">Appointment</option><option value="support">Support</option>
-            <option value="account">Account</option><option value="critical">Critical</option>
-          </select></label>
-          <div class="actions"><button type="submit" id="submit-task"><i data-lucide="sparkles"></i><span>Draft a utility template</span></button><button class="secondary wide" type="reset" title="Clear task"><i data-lucide="rotate-ccw"></i><span>Clear</span></button></div>
+          <label>Task<textarea name="task" maxlength="2000" rows="4" required
+            placeholder="Tell the tenant their rent receipt for this month has been generated"></textarea></label>
+          <label>Business context<textarea name="context" maxlength="4000" rows="3"
+            placeholder="The transaction and facts to preserve. Optional."></textarea></label>
+          <div class="actions">
+            <button class="go" type="submit" id="submit-task"><i data-lucide="sparkles"></i><span>Draft a utility template</span></button>
+            <button class="secondary" type="reset">Clear</button>
+          </div>
         </form>
       </section>
-      <section class="prediction"><h2>Draft</h2><div id="draft" aria-live="polite"><p class="muted">No draft yet.</p></div></section>
+      <section class="panel"><h2>Draft</h2>
+        <div id="draft" aria-live="polite"><p class="muted">Nothing yet.</p></div></section>
     </div>
 
-    <footer>Text-only research model. Predictions are not Meta decisions. Conversion and drafting send the text you enter to a configured AI provider; classification does not. Inputs are not saved. Avoid personal or confidential information.</footer>
+    <footer>Text-only research model. Predictions are not Meta decisions. Explain, convert, split and
+      generate send the text you enter to a configured AI provider; classification does not. Inputs are
+      not saved. Avoid personal or confidential information.</footer>
   </main>
 </body>
 </html>
