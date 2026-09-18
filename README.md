@@ -31,6 +31,112 @@ python3 -m venv .venv
 Open http://127.0.0.1:8765. Keep the app bound to loopback: this local prototype
 does not implement authentication or multi-user access control.
 
+## Serving the API
+
+Three endpoints carry the product; two support it. `templatelab/demo.py` mounts
+them all, and `tests/test_demo.py` pins their contracts.
+
+| Endpoint | Purpose | Latency |
+| --- | --- | --- |
+| `POST /api/predict` | Classify a template. Returns category, confidence, band. | ~50 ms |
+| `POST /api/convert` | Rewrite until the classifier accepts it. Returns the round trail. | 5-30 s |
+| `POST /api/generate` | Draft a utility template from a description of the event. | 3-20 s |
+| `POST /api/explain` | LLM reasoning with policy clause ids. | 3-5 s |
+| `POST /api/split` | Separate mixed content into utility and marketing templates. | 5-15 s |
+
+```bash
+export TEMPLATELAB_API_KEYS="partner:$(openssl rand -hex 16)"   # omit to run open locally
+export TEMPLATELAB_ALLOWED_ORIGINS="https://app.example.com"    # only if a browser calls it
+.venv/bin/python -m uvicorn templatelab.demo:app --host 127.0.0.1 --port 8767
+```
+
+Keys are accepted as `X-API-Key` or `Authorization: Bearer`, and rate limits are
+per key rather than global so one caller cannot exhaust another's budget: 60
+classifications and 20 model calls a minute. The generation and conversion
+endpoints spend a provider budget on the server's key, so a key shipped in
+browser JavaScript is readable by anyone with devtools -- call them from a
+backend.
+
+## Starting a new session on another machine
+
+Everything below `.data/` is gitignored, and it is where the trained models and
+the corpus live. A fresh clone has the code and none of the artefacts, so the
+models have to be rebuilt from your own export before the API can answer.
+
+```bash
+git clone https://github.com/saitejaconvozen/WhatsApp_AI_Thon.git && cd WhatsApp_AI_Thon
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.lock.txt
+
+# 1. Import the template export. Nothing works without it, and it never gets
+#    committed: every row is real customer message content.
+.venv/bin/python -m templatelab.ingest path/to/templates.json
+
+# 2. Provider credentials. .env is gitignored and loaded by templatelab/__init__.py;
+#    shell exports win over it, so a stale file cannot override a deliberate export.
+cat > .env <<'EOF'
+TEMPLATELAB_LLM_API_KEY=sk-your-key
+TEMPLATELAB_LLM_BACKEND=openai_compatible
+TEMPLATELAB_LLM_MODEL=your-model
+TEMPLATELAB_LLM_BASE_URL=https://your-provider
+TEMPLATELAB_LLM_ALLOW_EGRESS=1
+EOF
+chmod 600 .env
+
+# 3. Rebuild the artefacts the API loads, in this order. The classifier has no
+#    CLI of its own: it trains through the workspace app, or in one line here.
+.venv/bin/python -c "from templatelab.data import Store; from templatelab.model import Baseline; \
+  print(Baseline(Store('.data')).train())"   # -> .data/baseline.joblib
+.venv/bin/python -m templatelab.forms        # 24 approved forms -> .data/forms.json
+.venv/bin/python -m templatelab.reward       # utility scorer -> .data/utility-reward.joblib
+
+env HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 .venv/bin/python -m pytest -q
+```
+
+`TEMPLATELAB_LLM_ALLOW_EGRESS=1` is an acknowledgement, not a formality: the
+conversion, generation and explanation paths send template text to the provider.
+Point `TEMPLATELAB_LLM_BASE_URL` at an internal proxy if that content should not
+leave your network.
+
+### What a new session should read first
+
+Start with `docs/conversion-research.md`, which records what was measured rather
+than what was hoped. The findings that change what is worth building:
+
+- Conversion has **no training data**. The corpus pairs text with Meta's verdict;
+  it contains no example of a template being rewritten, resubmitted, and then
+  approved. Both the converter and the drafter are evaluated against models, not
+  against Meta.
+- The classifier scores **77.8%** on held-out data and about **67%** near its
+  decision boundary, which is where every downgraded template sits. It is the
+  gate on every conversion, so a conversion rate is partly a measure of the gate.
+- Its learning curve is **still climbing**, roughly +3pp per doubling of data. The
+  ceiling is sample size, not a missing feature.
+- **74%** of templates the loop cannot convert are refused because they report no
+  transaction. Those are advertisements, and converting one means inventing a
+  transaction that does not exist.
+- `templatelab/align.py` is kept **because it failed**: stripping calls to action
+  moves a template further from approved wording 65% of the time. Meta approves
+  "Call Now or choose an option below to proceed".
+
+### Reproducing the evaluations
+
+```bash
+.venv/bin/python -m templatelab.loop --utility 250 --marketing 250 --workers 8
+.venv/bin/python -m templatelab.regenerate --limit 500 --workers 8
+```
+
+Both write resumable JSONL under `.data/` and a summary beside it. The loop run
+samples both halves on a fixed seed, so two runs are comparable: the Meta-UTILITY
+half needs no conversion, and anything the classifier sends into the loop from it
+is a false positive. Watch that number as closely as the conversion count -- it
+is the floor on how much of the conversion count is the same artefact.
+
+Read the outputs before trusting a rate. Every defect found in this project --
+fabricated transactions, a surviving upsell, a form quoting an approval rate it
+did not match, 376 unedited templates counted as conversions -- was invisible in
+the summary statistics and obvious in the first few examples.
+
 ## Data
 
 Local data lives in `.data/`, which is excluded from Git. Imported records
