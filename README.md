@@ -63,9 +63,15 @@ Everything below `.data/` is gitignored, and it is where the trained models and
 the corpus live. A fresh clone has the code and none of the artefacts, so the
 models have to be rebuilt from your own export before the API can answer.
 
+Built and verified on Ubuntu 24.04, Python 3.12.3, CPU only -- no GPU is needed
+or used. The virtualenv comes to about 1.4GB, mostly torch; `.data/` reaches
+roughly 130MB once the corpus and models are built.
+
 ```bash
 git clone https://github.com/saitejaconvozen/WhatsApp_AI_Thon.git && cd WhatsApp_AI_Thon
 python3 -m venv .venv
+# The lock carries its own --extra-index-url for the CPU torch build, so this
+# installs ~1.4GB rather than pulling CUDA wheels.
 .venv/bin/python -m pip install -r requirements.lock.txt
 
 # 1. Import the template export. Nothing works without it, and it never gets

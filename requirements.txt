@@ -5,3 +5,12 @@ python-multipart>=0.0.20,<1
 openpyxl>=3.1,<4
 httpx>=0.28,<1
 pytest>=8,<10
+
+# Encoder-backed paths: the blended classifier, the form taxonomy, the reward
+# model and the drafter all load `.data/improvement/encoder-selected`. Without
+# these the API still classifies with the text-only baseline, and
+# templatelab.forms, templatelab.reward and templatelab.draft fail to import.
+# Install the CPU wheel explicitly; the default index pulls ~2.5GB of CUDA.
+torch>=2.4,<3
+transformers>=4.44,<6
+sentence-transformers>=3,<7
