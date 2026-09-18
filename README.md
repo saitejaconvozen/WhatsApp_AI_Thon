@@ -123,23 +123,32 @@ Rebuild and recommit `site/` after retraining or importing new data.
 
 ## Baseline and Limits
 
-The supplied export yields 1,923 eligible families after filtering and excluding
-conflicting labels, grouped across header, body, footer and buttons.
+Two exports are imported: a draft export of 4,079 records and a production
+export of 9,446. Together they yield **3,745 eligible families** after
+filtering and excluding conflicting labels, grouped across header, body,
+footer and buttons.
 
-**Meta never upgrades.** In this export no requested-MARKETING template was ever
-recorded as UTILITY, and the model scores 98.3% on that slice without being told
-what was requested. The live question is only ever whether a utility-intent
-draft gets downgraded, so the requested-UTILITY slice is the headline number:
+**Meta rarely upgrades, but it does.** Almost every category change runs one
+way — a template submitted as utility recorded as marketing. The reverse
+happens in about 0.6% of cases (31 in the production export), so the live
+question is nearly always whether a utility-intent draft gets downgraded.
+That makes the requested-UTILITY slice the headline number:
 
 | Slice | Families | Accuracy | Majority | Utility precision |
 | --- | ---: | ---: | ---: | ---: |
-| **Requested UTILITY** | 365 | **74.0%** | 50.1% | **79.7%** |
-| All holdout families | 481 | 79.8% | 62.0% | 78.7% |
-| Requested MARKETING | 116 | 98.3% | 100% | n/a |
+| **Requested UTILITY** | 549 | **76.0%** | 50.5% | **82.4%** |
+| All holdout families | 937 | 83.9% | 70.4% | 77.2% |
+| Requested MARKETING | 388 | 95.1% | 98.7% | n/a |
+
+The production export also carries `revisedMetaTemplateCategory` on 192
+records — Meta changing a category after its first ruling. 102 went from
+utility to marketing and 58 the other way. That field supersedes
+`metaTemplateCategory` when present, and it is direct evidence that labels
+move over time.
 
 Predictions are calibrated and thresholded. Between the two thresholds the model
-returns `NEEDS_REVIEW` instead of guessing: on the holdout that refers 13.7% of
-templates and raises utility precision to 83.9% on the rest. Thresholds are
+returns `NEEDS_REVIEW` instead of guessing: on the holdout that refers 5.8% of
+templates and raises utility precision to 87.0% on the rest. Thresholds are
 picked from out-of-fold predictions on training data, never on the holdout.
 
 These metrics are provisional: the data is a historical snapshot, grouping can

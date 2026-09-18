@@ -1,20 +1,22 @@
 {
-  "loaded_at": "2026-09-18T12:26:52.926991+00:00",
+  "loaded_at": "2026-09-18T13:31:52.595126+00:00",
   "published": true,
   "dataset": {
-    "total": 4079,
+    "total": 13525,
     "categories": {
-      "UTILITY": 1157,
-      "MARKETING": 2552,
-      "UNKNOWN": 351,
-      "AUTHENTICATION": 19
+      "UTILITY": 3533,
+      "MARKETING": 9538,
+      "AUTHENTICATION": 27,
+      "UNKNOWN": 427
     },
     "requested_categories": {
-      "UTILITY": 2734,
-      "MARKETING": 1321,
-      "AUTHENTICATION": 24
+      "UTILITY": 7276,
+      "MARKETING": 6217,
+      "AUTHENTICATION": 32
     },
     "statuses": {
+      "ACTIVE": 9441,
+      "INACTIVE": 5,
       "IN_PROGRESS": 75,
       "VERIFIED": 3621,
       "PENDING": 137,
@@ -22,28 +24,32 @@
       "REJECTED": 114
     },
     "formats": {
-      "TEXT": 2964,
-      "MEDIA": 790,
-      "OTP_TEMPLATES": 19,
-      "CAROUSEL": 205,
-      "REPLY": 46,
-      "CALL_PERMISSION": 45,
-      "LIST": 9,
+      "MEDIA": 1688,
+      "TEXT": 11253,
+      "OTP_TEMPLATES": 27,
+      "REPLY": 77,
+      "CAROUSEL": 398,
+      "CALL_PERMISSION": 65,
+      "LIST": 16,
       "LIMITED_TIME_OFFER": 1
     },
     "languages": {
-      "ENGLISH_US": 4079
+      "ENGLISH_US": 13357,
+      "ENGLISH": 154,
+      "MARATHI": 10,
+      "TAMIL": 2,
+      "ENGLISH_UK": 2
     },
-    "category_mismatches": 1333,
-    "families": 3024,
-    "duplicate_records": 1055,
-    "conflicting_families": 75,
-    "conflicting_records": 217,
-    "candidate_records": 2523,
-    "training_families": 1923,
+    "category_mismatches": 3470,
+    "families": 5054,
+    "duplicate_records": 8471,
+    "conflicting_families": 161,
+    "conflicting_records": 705,
+    "candidate_records": 10765,
+    "training_families": 3745,
     "training_categories": {
-      "MARKETING": 1251,
-      "UTILITY": 672
+      "MARKETING": 2698,
+      "UTILITY": 1047
     },
     "missing_bodies": 0
   },
@@ -52,45 +58,45 @@
     "training": false,
     "stale": false,
     "report": {
-      "trained_at": "2026-09-18T11:15:55.689775+00:00",
+      "trained_at": "2026-09-18T13:28:38.062914+00:00",
       "method": "TF-IDF + logistic regression",
       "split": "25% grouped holdout; one representative per normalized body family",
-      "train_families": 1442,
-      "test_families": 481,
-      "total_families": 1923,
-      "excluded_conflicting_families": 75,
-      "accuracy": 0.7983367983367984,
-      "majority_accuracy": 0.6195426195426196,
-      "macro_f1": 0.7772478360713655,
+      "train_families": 2808,
+      "test_families": 937,
+      "total_families": 3745,
+      "excluded_conflicting_families": 161,
+      "accuracy": 0.8388473852721452,
+      "majority_accuracy": 0.7043756670224119,
+      "macro_f1": 0.7963585857495483,
       "labels": [
         "MARKETING",
         "UTILITY"
       ],
       "confusion_matrix": [
         [
-          266,
-          32
+          607,
+          53
         ],
         [
-          65,
-          118
+          98,
+          179
         ]
       ],
       "per_class": {
         "MARKETING": {
-          "precision": 0.8036253776435045,
-          "recall": 0.8926174496644296,
-          "f1": 0.8457869634340223,
-          "support": 298
+          "precision": 0.8609929078014185,
+          "recall": 0.9196969696969697,
+          "f1": 0.8893772893772893,
+          "support": 660
         },
         "UTILITY": {
-          "precision": 0.7866666666666666,
-          "recall": 0.644808743169399,
-          "f1": 0.7087087087087087,
-          "support": 183
+          "precision": 0.771551724137931,
+          "recall": 0.6462093862815884,
+          "f1": 0.7033398821218074,
+          "support": 277
         }
       },
-      "predicted_utility_count": 150,
+      "predicted_utility_count": 232,
       "group_overlap": 0,
       "limitations": [
         "The platform owner confirmed on 2026-09-18 that metaTemplateCategory is Meta's final category and VERIFIED means successful Meta verification. No independent Meta API check was performed.",
@@ -103,42 +109,42 @@
       ],
       "feature_version": 2,
       "thresholds": {
-        "utility": 0.573,
-        "marketing": 0.44399999999999995,
+        "utility": 0.694,
+        "marketing": 0.615,
         "target_utility_precision": 0.85
       },
       "slices": {
         "all": {
-          "samples": 481,
-          "accuracy": 0.7983367983367984,
-          "majority_accuracy": 0.6195426195426196,
-          "utility_precision": 0.7866666666666666,
-          "utility_recall": 0.644808743169399,
-          "recorded_utility": 183
+          "samples": 937,
+          "accuracy": 0.8388473852721452,
+          "majority_accuracy": 0.7043756670224119,
+          "utility_precision": 0.771551724137931,
+          "utility_recall": 0.6462093862815884,
+          "recorded_utility": 277
         },
         "requested_utility": {
-          "samples": 365,
-          "accuracy": 0.7397260273972602,
-          "majority_accuracy": 0.5013698630136987,
-          "utility_precision": 0.7972972972972973,
-          "utility_recall": 0.644808743169399,
-          "recorded_utility": 183
+          "samples": 549,
+          "accuracy": 0.7595628415300546,
+          "majority_accuracy": 0.5045537340619308,
+          "utility_precision": 0.8240740740740741,
+          "utility_recall": 0.6544117647058824,
+          "recorded_utility": 272
         },
         "requested_marketing": {
-          "samples": 116,
-          "accuracy": 0.9827586206896551,
-          "majority_accuracy": 1.0,
-          "utility_precision": 0.0,
-          "utility_recall": null,
-          "recorded_utility": 0
+          "samples": 388,
+          "accuracy": 0.9510309278350515,
+          "majority_accuracy": 0.9871134020618557,
+          "utility_precision": 0.0625,
+          "utility_recall": 0.2,
+          "recorded_utility": 5
         }
       },
       "bands": {
-        "coverage": 0.8627858627858628,
-        "decided": 415,
-        "referred": 66,
-        "accuracy_when_decided": 0.8433734939759037,
-        "utility_precision_when_decided": 0.8392857142857143
+        "coverage": 0.9423692636072573,
+        "decided": 883,
+        "referred": 54,
+        "accuracy_when_decided": 0.8357870894677236,
+        "utility_precision_when_decided": 0.8699186991869918
       }
     }
   },
@@ -147,183 +153,183 @@
     "running": false,
     "stale": false,
     "report": {
-      "generated_at": "2026-09-18T11:16:21.985350+00:00",
+      "generated_at": "2026-09-18T13:31:36.314995+00:00",
       "split": {
-        "cutoff": "2026-08-13T15:52:32.647000+00:00",
-        "train_families": 1421,
-        "test_families": 481,
+        "cutoff": "2026-08-13T06:58:22.394000+00:00",
+        "train_families": 1588,
+        "test_families": 952,
         "excluded_invalid_date_families": 0,
-        "purged_boundary_families": 21,
+        "purged_boundary_families": 1205,
         "group_overlap": 0
       },
-      "majority_accuracy": 0.42203742203742206,
+      "majority_accuracy": 0.6827731092436975,
       "results": [
         {
           "method": "Word TF-IDF",
           "dimensions": null,
           "all": {
-            "accuracy": 0.7027027027027027,
-            "macro_f1": 0.6954954954954955,
+            "accuracy": 0.6869747899159664,
+            "macro_f1": 0.670964180170818,
             "confusion_matrix": [
               [
-                132,
-                71
+                432,
+                218
               ],
               [
-                72,
-                206
+                80,
+                222
               ]
             ],
-            "utility_precision": 0.7436823104693141,
-            "utility_recall": 0.7410071942446043,
-            "utility_support": 278,
-            "predicted_utility": 277,
-            "samples": 481
+            "utility_precision": 0.5045454545454545,
+            "utility_recall": 0.7350993377483444,
+            "utility_support": 302,
+            "predicted_utility": 440,
+            "samples": 952
           },
           "lower_overlap": {
-            "accuracy": 0.6964285714285714,
-            "macro_f1": 0.6901041666666667,
+            "accuracy": 0.6832432432432433,
+            "macro_f1": 0.6646149429341135,
             "confusion_matrix": [
               [
-                124,
-                69
+                425,
+                214
               ],
               [
-                67,
-                188
+                79,
+                207
               ]
             ],
-            "utility_precision": 0.7315175097276264,
-            "utility_recall": 0.7372549019607844,
-            "utility_support": 255,
-            "predicted_utility": 257,
-            "samples": 448
+            "utility_precision": 0.4916864608076009,
+            "utility_recall": 0.7237762237762237,
+            "utility_support": 286,
+            "predicted_utility": 421,
+            "samples": 925
           }
         },
         {
           "method": "Character TF-IDF",
           "dimensions": null,
           "all": {
-            "accuracy": 0.7193347193347194,
-            "macro_f1": 0.7125307125307125,
+            "accuracy": 0.6848739495798319,
+            "macro_f1": 0.6709252806813782,
             "confusion_matrix": [
               [
-                136,
-                67
+                424,
+                226
               ],
               [
-                68,
-                210
+                74,
+                228
               ]
             ],
-            "utility_precision": 0.7581227436823105,
-            "utility_recall": 0.7553956834532374,
-            "utility_support": 278,
-            "predicted_utility": 277,
-            "samples": 481
+            "utility_precision": 0.5022026431718062,
+            "utility_recall": 0.7549668874172185,
+            "utility_support": 302,
+            "predicted_utility": 454,
+            "samples": 952
           },
           "lower_overlap": {
-            "accuracy": 0.7120535714285714,
-            "macro_f1": 0.7073155908941278,
+            "accuracy": 0.6821621621621622,
+            "macro_f1": 0.6657448377581121,
             "confusion_matrix": [
               [
-                131,
-                62
+                418,
+                221
               ],
               [
-                67,
-                188
+                73,
+                213
               ]
             ],
-            "utility_precision": 0.752,
-            "utility_recall": 0.7372549019607844,
-            "utility_support": 255,
-            "predicted_utility": 250,
-            "samples": 448
+            "utility_precision": 0.49078341013824883,
+            "utility_recall": 0.7447552447552448,
+            "utility_support": 286,
+            "predicted_utility": 434,
+            "samples": 925
           }
         },
         {
           "method": "Latent semantic (LSA)",
           "dimensions": 100,
           "all": {
-            "accuracy": 0.6860706860706861,
-            "macro_f1": 0.6579124610841336,
+            "accuracy": 0.6176470588235294,
+            "macro_f1": 0.6169014084507043,
             "confusion_matrix": [
               [
-                96,
-                107
+                315,
+                335
               ],
               [
-                44,
-                234
+                29,
+                273
               ]
             ],
-            "utility_precision": 0.6862170087976539,
-            "utility_recall": 0.841726618705036,
-            "utility_support": 278,
-            "predicted_utility": 341,
-            "samples": 481
+            "utility_precision": 0.44901315789473684,
+            "utility_recall": 0.9039735099337748,
+            "utility_support": 302,
+            "predicted_utility": 608,
+            "samples": 952
           },
           "lower_overlap": {
-            "accuracy": 0.6852678571428571,
-            "macro_f1": 0.6586970969153713,
+            "accuracy": 0.6118918918918919,
+            "macro_f1": 0.6108439848544686,
             "confusion_matrix": [
               [
-                91,
-                102
+                307,
+                332
               ],
               [
-                39,
-                216
+                27,
+                259
               ]
             ],
-            "utility_precision": 0.6792452830188679,
-            "utility_recall": 0.8470588235294118,
-            "utility_support": 255,
-            "predicted_utility": 318,
-            "samples": 448
+            "utility_precision": 0.43824027072758037,
+            "utility_recall": 0.9055944055944056,
+            "utility_support": 286,
+            "predicted_utility": 591,
+            "samples": 925
           }
         },
         {
           "method": "Word TF-IDF + structure",
           "dimensions": null,
           "all": {
-            "accuracy": 0.6632016632016632,
-            "macro_f1": 0.6501221308236647,
+            "accuracy": 0.6638655462184874,
+            "macro_f1": 0.6508215962441315,
             "confusion_matrix": [
               [
-                113,
-                90
+                408,
+                242
               ],
               [
-                72,
-                206
+                78,
+                224
               ]
             ],
-            "utility_precision": 0.6959459459459459,
-            "utility_recall": 0.7410071942446043,
-            "utility_support": 278,
-            "predicted_utility": 296,
-            "samples": 481
+            "utility_precision": 0.48068669527896996,
+            "utility_recall": 0.7417218543046358,
+            "utility_support": 302,
+            "predicted_utility": 466,
+            "samples": 952
           },
           "lower_overlap": {
-            "accuracy": 0.6607142857142857,
-            "macro_f1": 0.6483516483516484,
+            "accuracy": 0.6594594594594595,
+            "macro_f1": 0.6444586803331198,
             "confusion_matrix": [
               [
-                106,
-                87
+                400,
+                239
               ],
               [
-                65,
-                190
+                76,
+                210
               ]
             ],
-            "utility_precision": 0.6859205776173285,
-            "utility_recall": 0.7450980392156863,
-            "utility_support": 255,
-            "predicted_utility": 277,
-            "samples": 448
+            "utility_precision": 0.46770601336302897,
+            "utility_recall": 0.7342657342657343,
+            "utility_support": 286,
+            "predicted_utility": 449,
+            "samples": 925
           }
         }
       ],
@@ -344,7 +350,7 @@
       "near_duplicates": {
         "method": "Training-fitted character TF-IDF cosine on normalized bodies",
         "threshold": 0.9,
-        "flagged_test_families": 33
+        "flagged_test_families": 27
       }
     }
   },
@@ -353,9 +359,9 @@
     "reason": "Error examples are excluded from the published build because they contain template text. Review them in the local workspace.",
     "items": [],
     "counts": {
-      "total": 97,
-      "false_utility": 32,
-      "false_marketing": 65,
+      "total": 151,
+      "false_utility": 53,
+      "false_marketing": 98,
       "reviewed": 0
     }
   }
