@@ -30,7 +30,11 @@ DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_MODELS = {"anthropic": "claude-sonnet-5", "deepseek": "deepseek-chat",
                   "openai_compatible": "deepseek-chat"}
-MAX_TOKENS = 512
+# Reasoning models spend this budget on reasoning tokens before emitting any
+# content. At 512 the budget was exhausted before the answer started, so every
+# hard template came back empty and was scored as a parse failure — which
+# silently dropped exactly the rows the judge found difficult.
+MAX_TOKENS = int(os.environ.get("TEMPLATELAB_LLM_MAX_TOKENS", "4096"))
 REQUEST_TIMEOUT = 60.0
 # Pool is searched, then trimmed to PER_CLASS examples of each label.
 NEIGHBOR_POOL = 40
@@ -192,7 +196,14 @@ def deepseek_call(prompt, model):
     choices = data.get("choices") or []
     if not choices:
         raise Unavailable("The provider returned no choices.")
-    return (choices[0].get("message") or {}).get("content") or ""
+    choice = choices[0]
+    content = (choice.get("message") or {}).get("content") or ""
+    if not content.strip() and choice.get("finish_reason") == "length":
+        reasoning = ((data.get("usage") or {}).get("completion_tokens_details") or {}).get("reasoning_tokens")
+        raise Unavailable(
+            f"The token budget ran out during reasoning ({reasoning} reasoning tokens, "
+            f"max_tokens={MAX_TOKENS}) and no answer was emitted. Raise TEMPLATELAB_LLM_MAX_TOKENS.")
+    return content
 
 
 BACKENDS = {"anthropic": anthropic_call, "deepseek": deepseek_call,

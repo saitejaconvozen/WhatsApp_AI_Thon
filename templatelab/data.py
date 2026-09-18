@@ -10,7 +10,9 @@ from zipfile import BadZipFile, ZipFile
 
 
 CATEGORIES = {"MARKETING", "UTILITY", "AUTHENTICATION"}
-COMPLETED = {"VERIFIED", "APPROVED"}
+# ACTIVE comes from the production export: a live template Meta already accepted.
+# The draft export uses VERIFIED instead; both mean "Meta has ruled on this".
+COMPLETED = {"VERIFIED", "APPROVED", "ACTIVE"}
 MAX_ROWS = 30000
 MAX_BYTES = 25 * 1024 * 1024
 FIELDS = ["name", "body", "header", "footer", "buttons", "meta_category",
@@ -178,13 +180,20 @@ def normalize_record(row, mapping, source):
             "external_id": string(row.get("_id")), "name": string(row.get("templateName")),
             "header": string(message.get("header")), "body": string(message.get("body")),
             "footer": string(message.get("footer")), "buttons": "\n".join(button_texts(message)),
-            "meta_category": category(row.get("metaTemplateCategory")),
+            # A revised category is Meta's latest word and supersedes the first ruling.
+            "meta_category": category(row.get("revisedMetaTemplateCategory")
+                                      or row.get("metaTemplateCategory")),
             "requested_category": category(message.get("templateCategory")),
-            "status": string(row.get("verificationStatus")).upper() or "UNKNOWN",
+            "status": (string(row.get("verificationStatus")).upper()
+                       or string(row.get("status")).upper() or "UNKNOWN"),
             "language": string(row.get("whatsAppLanguage")),
             "created_at": timestamp(row.get("createdAt")), "updated_at": timestamp(row.get("updatedAt")),
             "format": string(message.get("type")).upper() or "UNKNOWN",
-            "family_id": "", "label_source": "metaTemplateCategory",
+            "family_id": "",
+            "label_source": ("revisedMetaTemplateCategory" if row.get("revisedMetaTemplateCategory")
+                             else "metaTemplateCategory"),
+            "revised": bool(row.get("revisedMetaTemplateCategory")),
+            "original_meta_category": category(row.get("metaTemplateCategory")),
         }
     else:
         values = {field: string(row.get(mapping.get(field, ""))) for field in FIELDS}

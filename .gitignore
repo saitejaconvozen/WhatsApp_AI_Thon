@@ -5,3 +5,8 @@ __pycache__/
 *.pyc
 artifacts/
 .env
+
+# Raw template exports: real customer message content and author emails.
+# Import them into .data/ instead; never commit them.
+*_templates.json
+prod_templates.json
