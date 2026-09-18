@@ -12,6 +12,8 @@ from .data import Store, summarize
 from .error_review import ErrorReviews
 from .experiments import Experiments
 from .model import Baseline
+from .benchmark import latest_report
+from .improve import summary as improvement_summary
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,7 +43,8 @@ def create_results_app(data_dir=None):
             errors = {"available": False, "reason": str(exc), "items": []}
         report = {"loaded_at": datetime.now(timezone.utc).isoformat(), "revision": revision,
                   "dataset": summarize(store.records()), "baseline": baseline.status(),
-                  "experiments": Experiments(store).status(), "errors": errors}
+                  "experiments": Experiments(store).status(), "errors": errors,
+                  "benchmark": latest_report(store), "improvement": improvement_summary(store)}
         if revision != store.revision():
             raise HTTPException(409, "Dataset changed while loading results. Refresh to load a consistent snapshot.")
         return report

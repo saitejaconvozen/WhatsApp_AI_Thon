@@ -19,14 +19,16 @@ function developmentContent() {
       ['Error auditing', 'Holdout-only predictions are saved before the serving model is trained on all eligible families.'],
       ['Error-review workspace', 'Full components, separate human annotations, candidate edits, manual Meta outcomes and snapshot-scoped export.'],
       ['Chronological experiments', 'Word, character and latent-semantic models compared on later templates, with lexical near-duplicate screening.'],
+      ['DeepSeek pilot', '100 requested-utility holdout templates evaluated with training-only retrieval. See DeepSeek evaluation for the saved comparison.'],
+      ['Compose safeguards', 'Historical prediction remains separate from conversion eligibility; confirmed context and preserved transaction facts are required for edits.'],
     ].map(([title, description]) => `<li>${icon('circle-check')}<div><h3>${title}</h3><p>${description}</p></div><span class="badge utility">Complete</span></li>`).join('')}</ol></section>
     <section class="development-section"><h2>Next milestones</h2><ol class="milestones next">${[
       ['Review prediction errors', 'Check false-utility examples against the actual recipient relationship and business event.', 'Next'],
       ['Decision-time validation', 'Obtain actual Meta decision timestamps and a new untouched evaluation set.', 'Needs data'],
-      ['Neural model comparison', 'Compare pretrained sentence embeddings or an LLM; local LSA is already measured.', 'Planned'],
+      ['Improve historical prediction', 'Audit model disagreements, then compare adapted encoders or hybrid classifiers on validation data before a fresh test.', 'Planned'],
       ['Validated rewriting', 'Collect factual recipient context and observed Meta decisions before expanding beyond limited edits.', 'Needs review'],
     ].map(([title, description, status]) => `<li>${icon('circle')}<div><h3>${title}</h3><p>${description}</p></div><span class="badge">${status}</span></li>`).join('')}</ol></section></div>
-    ${developmentSection('Release evidence', '<div class="evidence-strip"><div><strong>40 passed</strong><p>Automated tests at the last backend checkpoint</p></div><div><strong>Desktop + mobile</strong><p>App, error reviews and experiments verified in Chrome</p></div><div><strong>Local only</strong><p>No LLM service or Meta API connected</p></div></div><p class="development-caption">Milestones are maintained development records, not a live CI feed. Checkpoint: 18 September 2026.</p>')}`;
+    ${developmentSection('Release evidence', '<div class="evidence-strip"><div><strong>142 passed</strong><p>Automated tests at the last backend checkpoint</p></div><div><strong>Desktop + mobile</strong><p>Compose and pilot results verified in Chrome</p></div><div><strong>Hosted AI opt-in</strong><p>DeepSeek pilot complete; no Meta submission API</p></div></div><p class="development-caption">Milestones are maintained development records, not a live CI feed. Checkpoint: 18 September 2026.</p>')}`;
   if (developmentTab === 'data') return `
     ${developmentSection('From export to training examples', `<ol class="data-journey">
       <li><strong>${num(s.total)}</strong><h3>Imported records</h3><p>All formats and workflow statuses remain available for browsing.</p></li>
@@ -34,7 +36,7 @@ function developmentContent() {
       <li><strong>${num(s.conflicting_families)}</strong><h3>Conflicting families</h3><p>Eligible families with both labels are excluded from training.</p></li>
       <li><strong>${num(s.training_families)}</strong><h3>Training families</h3><p>One representative per eligible, non-conflicting family.</p></li></ol><p class="development-caption">These are distinct counts, not sequential subtraction. Status, label, format and body-length filters also apply.</p>`)}
     ${developmentSection('Two categories, two different meanings', `<div class="development-columns"><div><h3>Requested category</h3><code>messageBody.templateCategory</code><p>The category selected when the draft was prepared. It is not a training label.</p></div><div><h3>Recorded category</h3><code>metaTemplateCategory</code><p>Meta's final category after verification. The platform owner confirmed this on 18 September 2026, along with VERIFIED meaning successful verification at Meta. No independent Meta API check was performed.</p></div></div><div class="notice warning">${num(s.category_mismatches)} records request utility but record marketing. This snapshot does not establish when or why a category changed.</div>`)}
-    ${developmentSection('Training eligibility', '<p>Only VERIFIED or APPROVED records with a MARKETING or UTILITY label, TEXT format and a body of at least 10 characters enter the candidate set. Authentication, rich formats, missing labels and unfinished workflows are excluded. Conflicting families are removed; the latest representative of each clean family is kept.</p><p>Header, body, footer and button text are combined for prediction. Grouping uses the body, so paraphrased duplicates may still cross the split.</p>')}
+    ${developmentSection('Training eligibility', '<p>VERIFIED, APPROVED and production ACTIVE records with a MARKETING or UTILITY label, TEXT format and a body of at least 10 characters enter the candidate set. Authentication, rich formats, missing labels and unfinished workflows are excluded. Conflicting families are removed; the latest representative of each clean family is kept.</p><p>Header, body, footer and button text are combined for prediction and family grouping. Revised Meta categories supersede initial categories when present. Semantic paraphrases may still cross the split.</p>')}
     ${developmentSection('Privacy boundary', '<p>The raw attachment is not copied into tracked source code. SQLite, model artifacts and error exports stay in Git-ignored local storage. Account and author fields are omitted, but message text can still contain personal information. This app is not authenticated and should remain on localhost.</p>')}`;
   if (developmentTab === 'learning') return `
     ${developmentSection('Three separate decisions', '<div class="evidence-strip"><div><strong>Historical prediction</strong><p>What category does this text resemble in our dataset?</p></div><div><strong>Policy checklist</strong><p>Does the draft contain known promotional signals and sufficient service context?</p></div><div><strong>Meta decision</strong><p>Made externally by Meta. Our app neither submits nor approves templates.</p></div></div>')}
@@ -63,6 +65,8 @@ function developmentContent() {
     ['templatelab/audit.py', 'Export false-utility and false-marketing holdout examples.'],
     ['templatelab/error_review.py', 'Persist human annotations and candidate outcomes separately from source labels.'],
     ['templatelab/experiments.py', 'Chronological comparison and lexical overlap screening; serving model is unchanged.'],
+    ['templatelab/benchmark.py', 'Bounded DeepSeek evaluation with training-only retrieval and failure-aware scoring.'],
+    ['templatelab/compose.py', 'Separate conversion eligibility from prediction and generate drafts from intent/context.'],
     ['templatelab/app.py', 'Expose the local API and serve the browser application.'],
     ['static/', 'Browser views, interactions, styles and bundled icons.'],
     ['tests/', 'Automated backend tests and browser workflow checks.'],
@@ -70,7 +74,7 @@ function developmentContent() {
     ['.data/', 'Private local database, model and holdout error report. Excluded from Git.'],
   ].map(([file, description]) => `<div><code>${file}</code><p>${description}</p></div>`).join('')}</div>`)}
   ${developmentSection('Technical choices', '<dl class="technology-list"><dt>FastAPI</dt><dd>Python HTTP API and local web server.</dd><dt>SQLite</dt><dd>Single-file local data storage without a database service.</dd><dt>scikit-learn</dt><dd>Established text vectorization, classification and evaluation implementations.</dd><dt>Vanilla JavaScript</dt><dd>Browser interaction without a frontend build pipeline.</dd><dt>pytest + Playwright</dt><dd>Backend behavior tests and real-browser workflow checks.</dd></dl>')}
-  ${developmentSection('Not built yet', '<p>No external LLM calls, neural embeddings, general-purpose rewriting, Meta submission, production authentication, billing integration or verified cost-savings measurement. Your approximate 7.5:1 cost ratio motivated the project; it is not a current pricing quote or an implemented billing calculation.</p>')}`;
+  ${developmentSection('Remaining validation', '<p>90% accuracy has not been demonstrated. Hosted LLM integration and pretrained embedding experiments exist, but fine-tuning, unrestricted fact-preserving rewriting, Meta submission, production authentication and verified cost savings remain unfinished. Your approximate 7.5:1 ratio is a scenario assumption, not a current price quote.</p>')}`;
 }
 
 function renderDevelopment() {

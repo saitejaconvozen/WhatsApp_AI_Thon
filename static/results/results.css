@@ -1,4 +1,8 @@
 :root { color-scheme: light; --ink:#202a2b; --muted:#637171; --line:#dfe6e4; --green:#147d69; --blue:#3864a5; --amber:#925d16; }
+.pilot-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; padding:24px 0; border-block:1px solid var(--line); margin:20px 0; }
+.pilot-metrics small { display:block; color:var(--muted); }
+.pilot-metrics strong { display:block; font-size:25px; margin-top:8px; }
+@media(max-width:600px) { .pilot-metrics { grid-template-columns:1fr 1fr; } }
 * { box-sizing:border-box; letter-spacing:0; }
 html { scroll-behavior:smooth; scroll-padding-top:20px; }
 body { margin:0; background:#fbfcfc; color:var(--ink); font:14px/1.6 system-ui,sans-serif; }

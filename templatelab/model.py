@@ -100,7 +100,7 @@ def score_rows(rows):
 
 
 def slice_metrics(holdout):
-    """Meta never upgrades, so requested-UTILITY is the only slice with a live decision."""
+    """Keep requested-category slices visible rather than hiding the harder cases."""
     return {
         "all": score_rows(holdout),
         "requested_utility": score_rows([r for r in holdout if r.get("requested_category") == "UTILITY"]),
@@ -141,6 +141,9 @@ class Baseline:
         report = {**self.bundle["report"]}
         report["limitations"] = [LABEL_PROVENANCE if "upstream semantics need confirmation" in item else item
                                  for item in report.get("limitations", [])]
+        report["limitations"] = [
+            "Recorded category changes can go in either direction; requested-UTILITY is the primary campaign-risk slice."
+            if item.startswith("Meta never upgraded") else item for item in report["limitations"]]
         outdated = self.bundle.get("feature_version") != FEATURE_VERSION
         return {"trained": True, "training": self.lock.locked(),
                 "stale": self.bundle["revision"] != self.store.revision() or outdated,
@@ -224,7 +227,7 @@ class Baseline:
                 "bands": band_metrics(holdout),
                 "limitations": [
                     LABEL_PROVENANCE,
-                    "Meta never upgraded a requested MARKETING template to UTILITY in this export, so the requested-UTILITY slice is the only one carrying a real decision.",
+                    "Recorded category changes can go in either direction; requested-UTILITY is the primary campaign-risk slice.",
                     "Grouping covers header, body, footer and buttons, but may still miss paraphrased duplicates.",
                     "This is a random grouped holdout, not a future-time or external validation set.",
                     "Only TEXT records are used. Images, carousels and other rich formats are excluded.",

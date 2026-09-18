@@ -20,6 +20,7 @@ from .model import Baseline
 from .policy import PRESETS, assess
 from .error_review import ErrorReviews
 from .experiments import Experiments
+from .benchmark import latest_report
 from .llm import Reviewer
 from .compose import convert, generate
 
@@ -49,6 +50,7 @@ class ConvertRequest(ReviewRequest):
 class GenerateRequest(BaseModel):
     task: str = Field(min_length=1, max_length=4000)
     purpose: str = ""
+    context: str = Field(default="", max_length=6000)
 
 
 class ErrorDraft(BaseModel):
@@ -216,7 +218,7 @@ def create_app(data_dir=None):
     @app.post("/api/generate")
     def generate_template(payload: GenerateRequest):
         try:
-            return generate(payload.task, baseline, purpose=payload.purpose or None)
+            return generate(payload.task, baseline, purpose=payload.purpose or None, context=payload.context)
         except ValueError as exc:
             raise HTTPException(400, str(exc))
 
@@ -244,6 +246,10 @@ def create_app(data_dir=None):
     @app.get("/api/model")
     def model():
         return baseline.status()
+
+    @app.get("/api/benchmark")
+    def benchmark_report():
+        return latest_report(store)
 
     @app.get("/api/llm")
     def llm_status():

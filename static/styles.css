@@ -1,4 +1,8 @@
 :root { color-scheme: light; --ink: #202a2b; --muted: #6a7577; --line: #e1e6e4; --surface: #fff; --canvas: #f8faf9; --teal: #147d69; --teal-dark: #0f6353; --mint: #e8f4ed; --amber: #9a5d0c; --amber-bg: #fff3df; --red: #b24641; --red-bg: #faeae8; --blue: #3864a5; }
+.pilot-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; padding:24px 0; border-block:1px solid var(--line); margin:20px 0; }
+.pilot-metrics small { display:block; color:var(--muted); }
+.pilot-metrics strong { display:block; font-size:25px; margin-top:8px; }
+@media(max-width:600px) { .pilot-metrics { grid-template-columns:1fr 1fr; } }
 * { box-sizing: border-box; letter-spacing: 0; }
 body { margin: 0; font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: var(--canvas); font-size: 14px; line-height: 1.5; }
 button, input, select, textarea { font: inherit; }

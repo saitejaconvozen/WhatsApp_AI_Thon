@@ -50,9 +50,9 @@ function navigate() {
     toast('Save or discard your error review before leaving.', true);
     return;
   }
-  state.route = ['development', 'dataset', 'compose', 'review', 'model', 'errors', 'experiments'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'development';
+  state.route = ['development', 'dataset', 'compose', 'review', 'model', 'errors', 'experiments', 'benchmark'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'development';
   document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === state.route));
-  $('#breadcrumb-page').textContent = { development: 'Development', dataset: 'Dataset', compose: 'Compose', review: 'Template review', model: 'Model lab', errors: 'Error review', experiments: 'Experiments' }[state.route];
+  $('#breadcrumb-page').textContent = { development: 'Development', dataset: 'Dataset', compose: 'Compose', review: 'Template review', model: 'Model lab', errors: 'Error review', experiments: 'Experiments', benchmark: 'DeepSeek evaluation' }[state.route];
   if (state.route === 'development') renderDevelopment();
   if (state.route === 'dataset') renderDataset();
   if (state.route === 'compose') renderCompose();
@@ -60,6 +60,7 @@ function navigate() {
   if (state.route === 'model') renderModel();
   if (state.route === 'errors') loadErrors();
   if (state.route === 'experiments') loadExperiments();
+  if (state.route === 'benchmark') renderBenchmark();
   icons();
 }
 

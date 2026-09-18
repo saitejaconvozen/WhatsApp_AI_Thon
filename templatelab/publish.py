@@ -16,6 +16,8 @@ from .data import Store, summarize
 from .error_review import ErrorReviews
 from .experiments import Experiments
 from .model import Baseline
+from .benchmark import latest_report
+from .improve import summary as improvement_summary
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,6 +41,25 @@ NO_CONTENT_REASON = ("Error examples are excluded from the published build becau
 
 def pick(source, fields):
     return {field: source[field] for field in fields if field in source}
+
+
+def public_benchmark(store):
+    result = latest_report(store)
+    if not result["available"]:
+        return result
+    source = result["report"]
+    report = pick(source, ("model", "completed", "max_calls", "complete", "generated_at", "stale",
+                           "selection", "retrieval", "retries", "limitations"))
+    metrics = source.get("metrics")
+    if metrics:
+        report["metrics"] = pick(metrics, ("attempted", "failures", "abstentions", "accuracy_95pct_interval",
+                                           "target_accuracy", "target_observed"))
+        for field in ("end_to_end", "baseline_same_sample"):
+            report["metrics"][field] = pick(metrics[field], ("samples", "accuracy", "majority_accuracy",
+                                                            "utility_precision", "utility_recall", "recorded_utility"))
+    else:
+        report["metrics"] = None
+    return {"available": True, "report": report}
 
 
 def build_payload(store):
@@ -68,6 +89,8 @@ def build_payload(store):
         "experiments": {"available": experiments["available"], "running": False,
                         "stale": experiments.get("stale", False), "report": experiment_report},
         "errors": errors,
+        "benchmark": public_benchmark(store),
+        "improvement": improvement_summary(store),
     }
 
 
@@ -77,10 +100,12 @@ def build(store, out_dir):
     (out_dir / "results.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     shutil.copyfile(ROOT / "static" / "results" / "results.css", out_dir / "results.css")
     shutil.copyfile(ROOT / "static" / "results" / "results.js", out_dir / "results.js")
+    shutil.copyfile(ROOT / "static" / "results" / "benchmark.js", out_dir / "benchmark.js")
     shutil.copyfile(ROOT / "static" / "vendor" / "lucide.min.js", out_dir / "lucide.min.js")
     page = (ROOT / "static" / "results" / "index.html").read_text(encoding="utf-8")
     page = (page.replace('href="/assets/results.css"', 'href="results.css"')
                 .replace('src="/assets/lucide.min.js"', 'src="lucide.min.js"')
+                .replace('src="/assets/benchmark.js"', 'src="benchmark.js"')
                 .replace('<script src="/assets/results.js" defer></script>',
                          '<script>window.RESULTS_ENDPOINT = "results.json";</script>\n'
                          '  <script src="results.js" defer></script>')

@@ -7,6 +7,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="results.css">
   <script src="lucide.min.js" defer></script>
+  <script src="benchmark.js" defer></script>
   <script>window.RESULTS_ENDPOINT = "results.json";</script>
   <script src="results.js" defer></script>
 </head>
@@ -14,10 +15,10 @@
   <header class="site-header"><a class="brand" href="#overview"><i data-lucide="chart-no-axes-combined"></i>Template Lab <span>Results</span></a><span class="local-label">Published metrics</span></header>
   <div class="page">
     <div class="page-title"><div><p class="eyebrow">WHATSAPP TEMPLATE CLASSIFICATION</p><h1>Project results</h1><p class="subheading">Data, model evidence and development progress</p></div><div class="actions"><button id="refresh" title="Refresh results" aria-label="Refresh results"><i data-lucide="refresh-cw"></i></button><button id="download" disabled><i data-lucide="download"></i>Download report</button></div></div>
-    <nav aria-label="Results sections"><a href="#overview">Overview</a><a href="#baseline">Baseline</a><a href="#comparison">Model comparison</a><a href="#errors">Error examples</a><a href="#ideas">Ideas</a><a href="#progress">Progress</a></nav>
+    <nav aria-label="Results sections"><a href="#overview">Overview</a><a href="#baseline">Baseline</a><a href="#comparison">Model comparison</a><a href="#deepseek">DeepSeek pilot</a><a href="#training">Accuracy improvement</a><a href="#errors">Error examples</a><a href="#ideas">Ideas</a><a href="#progress">Progress</a></nav>
     <p id="load-status" role="status">Loading local results...</p>
     <main id="results"></main>
-    <footer>Research prototype. No automatic submissions. Aggregate metrics only; no template content is published.</footer>
+    <footer>Research prototype. No automatic submissions. Hosted AI requests send template content to the configured provider only when enabled.</footer>
   </div>
   <dialog id="template-dialog" aria-labelledby="dialog-title"><div class="dialog-top"><h2 id="dialog-title">Template detail</h2><button id="close-dialog" title="Close template" aria-label="Close template"><i data-lucide="x"></i></button></div><div id="dialog-content"></div></dialog>
 </body>

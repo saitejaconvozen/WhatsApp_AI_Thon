@@ -1,5 +1,5 @@
 {
-  "loaded_at": "2026-09-18T13:31:52.595126+00:00",
+  "loaded_at": "2026-09-18T14:51:51.656855+00:00",
   "published": true,
   "dataset": {
     "total": 13525,
@@ -100,7 +100,7 @@
       "group_overlap": 0,
       "limitations": [
         "The platform owner confirmed on 2026-09-18 that metaTemplateCategory is Meta's final category and VERIFIED means successful Meta verification. No independent Meta API check was performed.",
-        "Meta never upgraded a requested MARKETING template to UTILITY in this export, so the requested-UTILITY slice is the only one carrying a real decision.",
+        "Recorded category changes can go in either direction; requested-UTILITY is the primary campaign-risk slice.",
         "Grouping covers header, body, footer and buttons, but may still miss paraphrased duplicates.",
         "This is a random grouped holdout, not a future-time or external validation set.",
         "Only TEXT records are used. Images, carousels and other rich formats are excluded.",
@@ -364,5 +364,114 @@
       "false_marketing": 98,
       "reviewed": 0
     }
+  },
+  "benchmark": {
+    "available": true,
+    "report": {
+      "model": "deepseek-v4-flash-fireworks-api",
+      "completed": 100,
+      "max_calls": 100,
+      "complete": true,
+      "generated_at": "2026-09-18T13:59:59.236859+00:00",
+      "stale": false,
+      "selection": "Recorded-label-stratified random sample of requested-UTILITY holdout families",
+      "retrieval": "Training-only vocabulary/index; every holdout ID and family excluded",
+      "retries": 0,
+      "limitations": [
+        "Research pilot on an already-inspected historical holdout, not an untouched external test.",
+        "Failures and abstentions count as incorrect in end-to-end accuracy. Success-only metrics are secondary.",
+        "Confidence values are model self-reports, not calibrated approval probabilities.",
+        "Obvious contact details/URLs are redacted; this does not guarantee anonymity.",
+        "No model promotion, template submission, or automatic rewriting is performed."
+      ],
+      "metrics": {
+        "attempted": 100,
+        "failures": 0,
+        "abstentions": 10,
+        "accuracy_95pct_interval": [
+          0.6356769977376873,
+          0.8073053908233518
+        ],
+        "target_accuracy": 0.9,
+        "target_observed": false,
+        "end_to_end": {
+          "samples": 100,
+          "accuracy": 0.73,
+          "majority_accuracy": 0.5,
+          "utility_precision": 0.8611111111111112,
+          "utility_recall": 0.62,
+          "recorded_utility": 50
+        },
+        "baseline_same_sample": {
+          "samples": 100,
+          "accuracy": 0.69,
+          "majority_accuracy": 0.5,
+          "utility_precision": 0.8064516129032258,
+          "utility_recall": 0.5,
+          "recorded_utility": 50
+        }
+      }
+    }
+  },
+  "improvement": {
+    "available": true,
+    "stages": [
+      {
+        "name": "Text model search",
+        "complete": true,
+        "train": 2106,
+        "validation": 702,
+        "test": 937,
+        "test_evaluated": false,
+        "candidates": 36,
+        "selected_validation": {
+          "all": {
+            "samples": 702,
+            "accuracy": 0.8689458689458689,
+            "majority_accuracy": 0.7264957264957265,
+            "utility_precision": 0.8164556962025317,
+            "utility_recall": 0.671875,
+            "recorded_utility": 192
+          },
+          "requested_utility": {
+            "samples": 417,
+            "accuracy": 0.8033573141486811,
+            "majority_accuracy": 0.5419664268585132,
+            "utility_precision": 0.8657718120805369,
+            "utility_recall": 0.675392670157068,
+            "recorded_utility": 191
+          }
+        },
+        "selected_epoch": null
+      },
+      {
+        "name": "Neural fine-tuning",
+        "complete": true,
+        "train": 2106,
+        "validation": 702,
+        "test": 937,
+        "test_evaluated": false,
+        "candidates": 6,
+        "selected_validation": {
+          "all": {
+            "samples": 702,
+            "accuracy": 0.8632478632478633,
+            "majority_accuracy": 0.7264957264957265,
+            "utility_precision": 0.7222222222222222,
+            "utility_recall": 0.8125,
+            "recorded_utility": 192
+          },
+          "requested_utility": {
+            "samples": 417,
+            "accuracy": 0.8105515587529976,
+            "majority_accuracy": 0.5419664268585132,
+            "utility_precision": 0.78,
+            "utility_recall": 0.8167539267015707,
+            "recorded_utility": 191
+          }
+        },
+        "selected_epoch": 3
+      }
+    ]
   }
 }

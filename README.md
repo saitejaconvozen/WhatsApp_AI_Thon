@@ -1,7 +1,15 @@
 # Template Lab
 
+Public model tester: https://impressive-guam-graphs-architecture.trycloudflare.com
+(temporary Cloudflare tunnel; [hosting details](docs/public-hosting.md)).
+
 A local workspace for auditing WhatsApp templates, evaluating category
 prediction, and reviewing utility eligibility.
+
+Latest checkpoint: [DeepSeek pilot and authoring workflow](docs/llm-pilot.md).
+The 100-template pilot measured 73% end-to-end accuracy, not the 90% target.
+Current development URLs are http://127.0.0.1:8767/#compose and
+http://127.0.0.1:8766/#deepseek (separate read-only results).
 
 ## Project Context
 

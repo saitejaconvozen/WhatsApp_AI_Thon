@@ -1,5 +1,50 @@
 # Continue in VS Code
 
+## Latest Public Demo and Accuracy Goal
+
+- Active user goal: 90% accuracy. Not achieved; do not mark complete based on
+  validation scores or precision.
+- Public model tester: https://impressive-guam-graphs-architecture.trycloudflare.com
+  (temporary Cloudflare tunnel to `templatelab.demo:app` on port 8769).
+- Public prediction and desktop/mobile rendering verified; private dataset and
+  export routes return 404. The demo serves the existing baseline, not an
+  unvalidated experimental model. Results are at `/results/`.
+- `servers-centered-approve-installations.trycloudflare.com` failed DNS and is
+  not the link to share. See `docs/public-hosting.md`.
+- Fixed improvement partitions: 2,106 training, 702 validation, 937 historical
+  test families; no test labels used for candidate/epoch/blend selection.
+- 36 text configurations completed. Best requested-Utility validation accuracy
+  80.3%, overall 86.9%. Five encoder fine-tuning epochs completed; epoch 3
+  selected at 81.1% requested-Utility / 86.3% overall validation accuracy.
+  Inspect `.data/improvement/neural-validation.json` for exact evidence.
+- Experiment reports are selection evidence, not fresh test or production accuracy.
+- Main files added: `improve.py`, `finetune.py`, `demo.py`, `static/demo/`,
+  model-demo tests and privacy-aware public browser tests. Existing user changes
+  and unrelated `wa-category.tar.gz` remain untouched.
+
+## Latest Checkpoint: 2026-09-18 DeepSeek Pilot
+
+This section supersedes the older session history below. Read
+[llm-pilot.md](llm-pilot.md) for implementation details, commands and limits.
+
+- Objective: predict historical Meta labels; keep human-reviewed conversion
+  eligibility separate; generate candidate drafts from intent and context.
+- Current data: 13,525 records, 3,745 eligible families.
+- Approved 100-template DeepSeek pilot complete: 73% end-to-end accuracy,
+  baseline 69% on the same sample, Utility precision 86.1%, 10 abstentions,
+  zero provider failures. 90% not achieved; serving model unchanged.
+- 142 tests passed (two dependency warnings); Compose and pilot pages passed
+  desktop/mobile browser checks. No Meta submissions were made.
+- Updated app: http://127.0.0.1:8767/#compose; separate results:
+  http://127.0.0.1:8766/#deepseek. Old 8765 process was left untouched.
+- These running servers have hosted AI disabled. Secure interactive launcher:
+  `.venv/bin/python -m templatelab.serve --llm --allow-egress --port 8768`.
+  It prompts for the key, never writes it to disk, and binds only to localhost.
+- Key supplied in chat was not saved. Rotate it before ongoing use.
+- No commit made in this continuation. Leave unrelated `wa-category.tar.gz` alone.
+
+## Earlier Session History
+
 Project: `/home/saiteja/Documents/ChatGPT/WhatsApp_AIThon`
 
 Saved Codex conversation: `01a0b369-34ab-7850-b4fc-b648a433b77b`

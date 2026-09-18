@@ -2,14 +2,17 @@ const composeState = {
   mode: 'inspect',
   draft: { name: '', header: '', body: '', footer: '', buttons: '' },
   task: '',
+  context: '',
   purpose: '',
   result: null,
   generated: null,
   busy: false,
   source: null,
+  relationship: false,
 };
 
 const VERDICTS = {
+  AUTHENTICATION: ['Authentication template', 'rose', 'key-round'],
   ALREADY_UTILITY: ['Reads as utility already', 'teal', 'circle-check'],
   CONVERTIBLE: ['Can be converted to utility', 'amber', 'wand-sparkles'],
   SPLIT_RECOMMENDED: ['Split into two templates', 'amber', 'split'],
@@ -53,6 +56,11 @@ function renderCompose() {
 }
 
 function renderComposePanel() {
+  if (state.route !== 'compose') return;
+  document.querySelectorAll('[data-mode]').forEach(button => {
+    button.classList.toggle('active', button.dataset.mode === composeState.mode);
+    button.setAttribute('aria-pressed', String(button.dataset.mode === composeState.mode));
+  });
   $('#compose-panel').innerHTML = composeState.mode === 'inspect' ? inspectPanel() : generatePanel();
   wireCompose();
   icons();
@@ -72,6 +80,7 @@ function inspectPanel() {
       ${composeField('body', 'Body', 'Your order {{order_id}} has shipped.', 5)}
       ${composeField('footer', 'Footer', 'Optional')}
       ${composeField('buttons', 'Buttons', 'One per line', 2)}
+      <label class="check"><input type="checkbox" id="compose-relationship" ${composeState.relationship ? 'checked' : ''}>Confirmed actual transaction or requested service for this recipient</label>
       <button class="button primary" id="compose-check" ${composeState.busy ? 'disabled' : ''}>${icon('scan-text')}${composeState.busy ? 'Checking...' : 'Check this template'}</button>
     </section>
     <section>
@@ -83,7 +92,7 @@ function inspectPanel() {
 function verdictPanel(result) {
   const [label, tone, mark] = VERDICTS[result.verdict] || ['Unknown', 'gray', 'circle'];
   const offer = result.utility ? `
-    <div class="notice">${icon('help-circle')} This template can be sent as <strong>utility</strong> instead. Change it?</div>
+    <div class="notice">${icon('help-circle')} Candidate service-only edit. Human review and Meta categorization are still required.</div>
     ${templateCard('Utility version', result.utility)}
     ${result.split_off ? templateCard('Promotional part, as a separate marketing template', { body: result.split_off.body }, result.split_off.note) : ''}
     ${result.needs_human ? `<div class="notice warn">${icon('triangle-alert')} Some promotional wording carries business data and was kept. A person has to decide on it:<ul>${result.ambiguous.map(a => `<li>${esc(a.text)}</li>`).join('')}</ul></div>` : ''}
@@ -91,7 +100,7 @@ function verdictPanel(result) {
       <button class="button primary" id="compose-accept">${icon('check')}Use the utility version</button>
       <button class="button" id="compose-keep">${icon('x')}Keep it as it is</button>
     </div>` : '';
-  return `<div class="verdict ${tone}">${icon(mark)}<div><strong>${esc(label)}</strong><p>${esc(result.reason || '')}</p></div></div>
+  return `<h3>Predicted Meta category</h3><p>${result.before?.available ? badge(result.before.category) : esc(result.before?.reason || 'Prediction unavailable')}</p><h3 style="margin-top:20px">Conversion assessment</h3><div class="verdict ${tone}">${icon(mark)}<div><strong>${esc(label)}</strong><p>${esc(result.reason || '')}</p></div></div>
     ${probabilityRow(result.before, result.after)}
     ${result.removed?.length ? `<details><summary>Removed ${result.removed.length} promotional fragment(s)</summary><ul>${result.removed.map(r => `<li><span class="muted">${esc(r.component)}</span> ${esc(r.text)}</li>`).join('')}</ul></details>` : ''}
     ${offer}
@@ -104,6 +113,7 @@ function generatePanel() {
     <section>
       <div class="section-heading"><h2>What do you need to tell the customer?</h2><span class="muted">Utility only</span></div>
       <label class="field"><span>Task</span><textarea id="compose-task" rows="4" placeholder="Tell the customer their invoice is ready and when it is due">${esc(composeState.task)}</textarea></label>
+      <label class="field"><span>Business context</span><textarea id="compose-context" rows="3" maxlength="6000" placeholder="Existing transaction, recipient relationship and facts to preserve">${esc(composeState.context)}</textarea></label>
       <label class="field"><span>Service event</span><select id="compose-purpose">
         ${['', 'billing', 'order', 'appointment', 'support', 'account', 'critical'].map(p =>
           `<option value="${p}" ${composeState.purpose === p ? 'selected' : ''}>${p ? p[0].toUpperCase() + p.slice(1) : 'Detect automatically'}</option>`).join('')}
@@ -136,7 +146,18 @@ function readComposeFields() {
 }
 
 function wireCompose() {
+  ['header', 'body', 'footer', 'buttons'].forEach(key => {
+    const field = $(`#compose-${key}`);
+    if (field) field.oninput = () => { composeState.draft[key] = field.value; };
+  });
+  const relationship = $('#compose-relationship');
+  if (relationship) relationship.onchange = () => { composeState.relationship = relationship.checked; };
+  ['task', 'context', 'purpose'].forEach(key => {
+    const field = $(`#compose-${key}`);
+    if (field) field.oninput = () => { composeState[key] = field.value; };
+  });
   document.querySelectorAll('[data-mode]').forEach(button => {
+    button.disabled = composeState.busy;
     button.onclick = () => { composeState.mode = button.dataset.mode; renderComposePanel(); };
   });
 
@@ -148,7 +169,8 @@ function wireCompose() {
     form.append('file', file.files[0]);
     try {
       const extracted = await api('/api/extract', { method: 'POST', body: form });
-      composeState.draft = { ...composeState.draft, ...extracted.template };
+      composeState.draft = { ...composeState.draft, ...extracted.template, format: extracted.format };
+      composeState.relationship = false;
       composeState.source = `${file.files[0].name} — first of ${num(extracted.records_in_file)} record(s)`;
       composeState.result = null;
       renderComposePanel();
@@ -160,10 +182,12 @@ function wireCompose() {
   const check = $('#compose-check');
   if (check) check.onclick = async () => {
     readComposeFields();
+    composeState.relationship = $('#compose-relationship').checked;
     if (!composeState.draft.body.trim()) { toast('Enter a message body.', true); return; }
+    composeState.result = null;
     composeState.busy = true; renderComposePanel();
     try {
-      composeState.result = await post('/api/convert', { ...composeState.draft, purpose: composeState.purpose || 'unknown' });
+      composeState.result = await post('/api/convert', { ...composeState.draft, purpose: composeState.purpose || 'unknown', relationship_confirmed: composeState.relationship });
     } catch (error) { toast(error.message, true); }
     composeState.busy = false; renderComposePanel();
   };
@@ -182,11 +206,13 @@ function wireCompose() {
   const generate = $('#compose-generate');
   if (generate) generate.onclick = async () => {
     composeState.task = $('#compose-task').value;
+    composeState.context = $('#compose-context').value;
     composeState.purpose = $('#compose-purpose').value;
     if (!composeState.task.trim()) { toast('Describe the message you need.', true); return; }
+    composeState.generated = null;
     composeState.busy = true; renderComposePanel();
     try {
-      composeState.generated = await post('/api/generate', { task: composeState.task, purpose: composeState.purpose });
+      composeState.generated = await post('/api/generate', { task: composeState.task, purpose: composeState.purpose, context: composeState.context });
     } catch (error) { toast(error.message, true); }
     composeState.busy = false; renderComposePanel();
   };
@@ -196,6 +222,7 @@ function wireCompose() {
     const t = composeState.generated.template;
     composeState.draft = { name: t.name || '', header: t.header, body: t.body, footer: t.footer, buttons: t.buttons };
     composeState.mode = 'inspect';
+    composeState.relationship = false;
     composeState.result = null;
     renderComposePanel();
   };

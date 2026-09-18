@@ -11,7 +11,16 @@ PROMOTIONS = [
 ]
 AUTH = re.compile(r"\b(?:one.time (?:password|code)|verification code|your otp|authentication code)\b", re.I)
 REFERENCE = re.compile(r"\{\{[^}]+\}\}|\b\d{2,}\b", re.I)
-TRANSACTION = re.compile(r"\b(?:invoice|bill|payment|order|appointment|delivery|shipment|ticket|case|account|booking)\b", re.I)
+TRANSACTION = re.compile(r"\b(?:invoice|bill(?:ing)?|payment|paid|refund|receipt|order|appointment|"
+                         r"booking|delivery|shipment|ticket|case|account|subscription|plan|policy|"
+                         r"agreement|contract|rent|tenant|landlord|owner|property|visit|inspection|"
+                         r"packer|mover|service|request|application|registration|verification|kyc|"
+                         r"biometric|document|reference|due|overdue|amount|balance|schedule[d]?|"
+                         r"reschedule[d]?|assigned|renewal|expir(?:y|es|ed|ing))\b", re.I)
+# The original list was generic e-commerce vocabulary and matched only 34% of this
+# corpus's genuine UTILITY templates, so two thirds of legitimate drafts were being
+# refused as having no transaction to preserve. Paired with REFERENCE below it keeps
+# comparable separation (17.7pp against 18.3pp) at double the coverage.
 EVENTS = {
     "billing": r"\b(?:invoice|bill|amount due|payment (?:due|received|confirmed)|paid)\b",
     "order": r"\b(?:order|shipment|delivery|shipped|dispatched)\b",

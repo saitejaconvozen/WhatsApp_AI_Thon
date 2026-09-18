@@ -2,6 +2,39 @@
 
 Last updated: 2026-09-18. This file is updated as checks actually pass.
 
+## Current Execution Checkpoint
+
+Accuracy-goal continuation: a fixed 2,106 / 702 / 937 train/validation/historical
+test partition is saved under `.data/improvement/`. A 36-configuration text
+search selected 80.3% requested-Utility and 86.9% overall **validation** accuracy.
+Five neural fine-tuning epochs completed. Epoch 3 was selected on requested-
+Utility validation accuracy: **81.1%**, with **86.3%** overall validation
+accuracy. Later epochs did not improve it. No new test score or 90% claim
+follows from these selection numbers; the serving model is unchanged.
+
+Public model tester: [Cloudflare link](https://impressive-guam-graphs-architecture.trycloudflare.com).
+Aggregate metrics are at `/results/` on the same hostname.
+See [public-hosting.md](public-hosting.md) for its temporary lifetime and privacy boundary.
+
+This checkpoint supersedes the initial implementation history below.
+
+| Work | Status |
+| --- | --- |
+| Separate learned classification from conversion eligibility | Complete |
+| Require human context before edits; preserve transaction facts | Complete for conservative extractive edits |
+| Intent and business-context inputs for generation | Complete; preset fallback when hosted AI is off |
+| Secure opt-in provider launcher and stricter response validation | Complete |
+| Training-only retrieval, bounded 100-template evaluation | Complete; 73% accuracy, not 90% |
+| Pilot comparison in main app and separate results site | Complete |
+| Regression checks | 142 tests passed; desktop/mobile Compose and pilot checks passed |
+| Audit disagreements with platform-owner context | Next; original labels remain unchanged |
+| Tune alternative models on validation data, then test on fresh data | Pending; no further paid experiments started |
+| Validate generated and rewritten drafts against actual Meta outcomes | Pending |
+
+Detailed results, limitations and launch commands: [llm-pilot.md](llm-pilot.md).
+
+## Initial Implementation History
+
 | Step | Deliverable | Status |
 | --- | --- | --- |
 | 1 | Inspect the supplied JSON and document label semantics | Complete |

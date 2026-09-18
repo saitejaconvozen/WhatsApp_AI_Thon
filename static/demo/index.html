@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Template Lab | Classifier</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/assets/demo.css">
+  <script src="/assets/lucide.min.js" defer></script>
+  <script src="/assets/demo.js" defer></script>
+</head>
+<body>
+  <header><a class="brand" href="/"><i data-lucide="messages-square"></i>Template Lab</a><a href="/results/">Evaluation results <i data-lucide="arrow-up-right"></i></a></header>
+  <main>
+    <div class="title"><div><p class="eyebrow">WHATSAPP / META CATEGORY</p><h1>Template classifier</h1></div><span class="status">Research model</span></div>
+    <div class="workspace">
+      <section><h2>Template</h2><form id="template-form">
+        <label>Category submitted to Meta<select name="requested_category"><option value="UTILITY" selected>Utility</option><option value="MARKETING">Marketing</option><option value="UNKNOWN">Not specified</option></select></label>
+        <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+        <label>Body<textarea name="body" maxlength="6000" rows="7" required placeholder="Your invoice {{invoice_id}} is due on {{due_date}}."></textarea></label>
+        <label>Footer<input name="footer" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+        <label>Buttons<textarea name="buttons" maxlength="1000" rows="2" placeholder="View invoice"></textarea></label>
+        <div class="actions"><button type="submit" id="classify"><i data-lucide="scan-text"></i><span>Classify template</span></button><button class="secondary" type="reset" title="Clear template" aria-label="Clear template"><i data-lucide="rotate-ccw"></i></button></div>
+      </form></section>
+      <section class="prediction"><h2>Predicted Meta category</h2><div id="result" aria-live="polite"><p class="muted">No prediction yet.</p></div></section>
+    </div>
+    <footer>Text-only research model. Predictions are not Meta decisions. Inputs are not saved or sent to a hosted AI provider. Avoid personal or confidential information.</footer>
+  </main>
+</body>
+</html>
