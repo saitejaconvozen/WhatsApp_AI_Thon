@@ -162,3 +162,30 @@ def test_form_evidence_is_measured_on_the_draft_not_the_task(drafter, monkeypatc
     # form the finished draft actually belongs to.
     assert result["form_matched"] is True
     assert result["form_approved"] == 86
+
+
+def test_a_kannada_template_is_not_answered_in_english(drafter, monkeypatch):
+    """Half the downgraded templates carry Indic script while their stored
+    language says ENGLISH_US. A draft the recipient cannot read is not a better
+    template, so a script mismatch fails the constraints like any other."""
+    english = json.dumps({"possible": True, "reason": "ok",
+                          "body": "Your loan account {{id}} has an installment due."})
+    # Real Indic templates in this corpus are mixed: Kannada or Hindi prose
+    # around English lending terms and ASCII placeholders.
+    kannada = json.dumps({"possible": True, "reason": "ok",
+                          "body": "ಪ್ರಿಯ ಗ್ರಾಹಕರೇ, ನಿಮ್ಮ Loan A/c {{id}} EMI ಬಾಕಿ ಇದೆ."})
+    replies = iter([english, kannada])
+    monkeypatch.setitem(draft_module.BACKENDS, "openai_compatible",
+                        lambda prompt, model: next(replies))
+    result = drafter.draft("EMI due", rounds=2, script="Kannada")
+    assert result["possible"] is True
+    assert result["kept_script"] is True
+    assert "ನಿಮ್ಮ" in result["body"], "the English attempt must be rejected and retried"
+
+
+def test_script_is_read_from_the_body_not_the_language_field():
+    assert draft_module.script_of("ನಿಮ್ಮ ಸಾಲದ ಖಾತೆ") == "Kannada"
+    assert draft_module.script_of("आपका ऋण खाता") == "Devanagari"
+    assert draft_module.script_of("Your loan account {{id}}") is None
+    # Emoji and placeholders must not be mistaken for a script.
+    assert draft_module.script_of("Hi {{1}} 👋 your order shipped") is None

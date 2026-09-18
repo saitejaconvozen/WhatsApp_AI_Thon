@@ -33,6 +33,30 @@ ROOT = Path(__file__).resolve().parent.parent
 # nearest one, and quoting "91% approved" for it would be inventing evidence.
 FORM_MATCH = 0.40
 
+# Half the downgraded templates carry Indic script while their stored `language`
+# says ENGLISH_US, so the metadata cannot be trusted and the script is read from
+# the body. A draft that answers a Kannada template in English is not a better
+# template; it is one the recipient cannot read.
+SCRIPTS = {
+    "Devanagari": (0x0900, 0x097F), "Bengali": (0x0980, 0x09FF),
+    "Gurmukhi": (0x0A00, 0x0A7F), "Gujarati": (0x0A80, 0x0AFF),
+    "Odia": (0x0B00, 0x0B7F), "Tamil": (0x0B80, 0x0BFF),
+    "Telugu": (0x0C00, 0x0C7F), "Kannada": (0x0C80, 0x0CFF),
+    "Malayalam": (0x0D00, 0x0D7F), "Arabic": (0x0600, 0x06FF),
+}
+
+
+def script_of(text):
+    """The dominant non-Latin script in a template, or None."""
+    counts = {}
+    for character in text or "":
+        point = ord(character)
+        for name, (low, high) in SCRIPTS.items():
+            if low <= point <= high:
+                counts[name] = counts.get(name, 0) + 1
+                break
+    return max(counts, key=counts.get) if counts else None
+
 PROMPT = """Write a WhatsApp Business template that Meta will classify as UTILITY.
 
 Meta approved every one of these. Follow their shape:
@@ -59,6 +83,7 @@ Rules:
 - Include a reference that identifies the specific transaction.
 - No discount, offer, or wording that promotes a purchase.
 - If this task is inherently promotional and cannot be a service message, say so.
+{budget}{language}
 
 Return JSON only:
 {{"possible": true|false, "name": "SHORT_TEMPLATE_NAME", "body": "the template",
@@ -80,8 +105,15 @@ Return JSON only:
  "buttons": "optional button label or empty", "reason": "one sentence"}}"""
 
 
-def critique(text):
+def critique(text, checks=None, budget=None, script=None):
     notes = []
+    if script and checks is not None and not checks.get("kept_script", True):
+        notes.append(f"It is not written in {script} script. The recipient reads {script}; "
+                     f"write the template in that script, leaving placeholders in ASCII.")
+    if budget is not None and checks is not None and not checks.get("within_budget", True):
+        notes.append(f"It uses {checks['placeholders_used']} placeholders; the limit is {budget}. "
+                     f"Remove the ones the description does not support -- do not assert a "
+                     f"reference, booking or application the description never mentions.")
     if not TRANSACTION.search(text):
         notes.append("It names no transaction (order, invoice, booking, appointment).")
     if not REFERENCE.search(text):
@@ -149,7 +181,17 @@ class Drafter:
         index = int(np.argmax(similarity))
         return self.safe[index], float(similarity[index])
 
-    def draft(self, task, rounds=3, target=0.60):
+    def draft(self, task, rounds=3, target=0.60, placeholder_budget=None, script=None):
+        """Draft a template for `task`.
+
+        `placeholder_budget` caps how many distinct placeholders the result may
+        carry. Without it, drafts invent the fields an ideal utility template
+        would have: a viewing-confirmation drafted from "the recipient unlocked
+        contact details" grew from 3 placeholders to 8, asserting an appointment
+        reference and an enquiry id that the original never claimed existed.
+        Every invented placeholder is either a field the business cannot fill or
+        a statement that is not true.
+        """
         task = str(task or "").strip()
         if not task:
             raise ValueError("Describe the message you need.")
@@ -159,10 +201,19 @@ class Drafter:
         cache = Cache(self.store.directory)
 
         form, task_similarity = self.choose_form(task)
+        language = ""
+        if script:
+            language = (f"\n- Write the template in {script} script, the language the recipient reads."
+                        f"\n  Placeholders stay in ASCII exactly as written.")
+        budget = ""
+        if placeholder_budget is not None:
+            budget = (f"- Use at most {placeholder_budget} distinct placeholders. Do not introduce\n"
+                      f"  references, identifiers or dates the description does not mention; if the\n"
+                      f"  description does not say a booking or application exists, do not assert one.")
         prompt = PROMPT.format(
             exemplars="\n\n".join(f"--- approved example {i+1} ---\n{e}"
                                   for i, e in enumerate(form["exemplars"][:3])),
-            task=task)
+            task=task, budget=budget, language=language)
 
         best, trail = None, []
         for _ in range(rounds):
@@ -178,14 +229,24 @@ class Drafter:
                 break
             body = answer["body"].strip()
             checks = gates(body)
+            if placeholder_budget is not None:
+                used = len(set(PLACEHOLDER.findall(body)))
+                checks["placeholders_used"] = used
+                checks["within_budget"] = used <= placeholder_budget
+            if script:
+                checks["script"] = script_of(body)
+                checks["kept_script"] = checks["script"] == script
             score = self.reward.score(body)
             trail.append(round(score, 4))
-            clean = checks["has_anchor"] and checks["has_placeholder"] and not checks["promotional"]
+            clean = (checks["has_anchor"] and checks["has_placeholder"]
+                     and not checks["promotional"] and checks.get("within_budget", True)
+                     and checks.get("kept_script", True))
             if clean and (best is None or score > best[1]):
                 best = (body, score, answer, checks)
             if clean and score >= target:
                 break
-            prompt = REFINE.format(score=score, previous=body, critique=critique(body))
+            prompt = REFINE.format(score=score, previous=body,
+                                   critique=critique(body, checks, placeholder_budget, script))
 
         if best is None:
             return {"possible": False, "reason": "No draft satisfied the hard constraints.",

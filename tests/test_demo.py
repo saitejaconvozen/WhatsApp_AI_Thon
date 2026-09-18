@@ -51,7 +51,7 @@ def test_convert_and_generate_never_return_stored_templates(monkeypatch):
         "reason": "drafted", "neighbors": [{"body": "PRIVATE CUSTOMER DATA"}]})
 
     with TestClient(demo.create_demo(predictor=Predictor())) as client:
-        converted = client.post('/api/convert', json={"body": "Your order {{1}} shipped. 20% off!"})
+        converted = client.post('/api/split', json={"body": "Your order {{1}} shipped. 20% off!"})
         assert converted.status_code == 200
         assert converted.json()["verdict"] == "SPLIT_RECOMMENDED"
         assert "PRIVATE" not in converted.text and "neighbors" not in converted.json()
@@ -135,7 +135,7 @@ def test_conversion_says_which_context_is_missing(monkeypatch):
                       "missing_context": ["Confirm that this message relates to an actual transaction.",
                                           "Select the event that triggers this message."]}})
     with TestClient(demo.create_demo(predictor=Predictor())) as client:
-        data = client.post('/api/convert', json={"body": "Can we call you about property search?"}).json()
+        data = client.post('/api/split', json={"body": "Can we call you about property search?"}).json()
         assert data["verdict"] == "NEEDS_CONTEXT"
         assert len(data["missing_context"]) == 2
         assert "transaction" in data["missing_context"][0]
@@ -154,7 +154,21 @@ def test_pasted_json_is_parsed_into_components():
     parsed = from_json(PASTED)
     assert parsed["body"].startswith("Hi {{bodyVar1}}")
     assert parsed["requested_category"] == "UTILITY"
+    assert parsed["meta_category"] == "UTILITY"
     assert parsed["name"] == "PERMISSION"
+
+
+def test_public_conversion_keeps_the_recorded_meta_downgrade(monkeypatch):
+    from templatelab import llm
+    monkeypatch.setenv(llm.BACKEND_VARIABLE, "disabled")
+    downgraded = json.loads(PASTED)
+    downgraded["metaTemplateCategory"] = "MARKETING"
+    with TestClient(create_demo(predictor=Predictor())) as client:
+        data = client.post('/api/split', json={
+            "template_json": json.dumps(downgraded), "relationship_confirmed": True}).json()
+    assert data["verdict"] == "NEEDS_CONTEXT"
+    assert data["disputed_by_meta"] is True
+    assert data["utility"] is None
 
 
 @pytest.mark.parametrize("text, fragment", [
@@ -179,7 +193,7 @@ def test_json_input_and_output_round_trip(monkeypatch):
         "utility": {"header": "", "body": "Your invoice {{id}} is ready.", "footer": "", "buttons": "View\nHelp"},
         "split_off": None, "removed": [], "ambiguous": [], "needs_human": False, "checklist": {}})
     with TestClient(demo.create_demo(predictor=Predictor())) as client:
-        data = client.post('/api/convert', json={"template_json": PASTED}).json()
+        data = client.post('/api/split', json={"template_json": PASTED}).json()
         assert data["verdict"] == "CONVERTIBLE"
         rendered = data["utility_json"]
         assert rendered["templateName"] == "PERMISSION"
@@ -213,6 +227,6 @@ def test_conversion_reports_how_the_rewrite_was_chosen(monkeypatch):
         "removed": [], "ambiguous": [], "needs_human": False, "checklist": {},
         "selection": {"candidates": 5, "eligible": 3, "moved": 0.42}})
     with TestClient(demo.create_demo(predictor=Predictor())) as client:
-        data = client.post('/api/convert', json={"body": "20% off your {{plan}} renewal {{date}}."}).json()
+        data = client.post('/api/split', json={"body": "20% off your {{plan}} renewal {{date}}."}).json()
         assert data["selection"] == {"candidates": 5, "eligible": 3, "moved": 0.42}
         assert data["method"].startswith("llm-select")
