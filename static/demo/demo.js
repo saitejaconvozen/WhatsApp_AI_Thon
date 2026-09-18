@@ -74,6 +74,25 @@ function checkSplice() {
   };
 }
 
+function jsonBlock(title, payload) {
+  const wrap = element('div');
+  wrap.append(element('h3', { textContent: title }),
+              element('pre', { className: 'json', textContent: JSON.stringify(payload, null, 2) }));
+  return wrap;
+}
+
+function applyJsonMode() {
+  const on = document.querySelector('#json-mode')?.checked;
+  document.querySelector('#json-field').hidden = !on;
+  // The five component fields and the pasted record are two ways to say the same
+  // thing, so only one is shown at a time.
+  ['header', 'body', 'footer', 'buttons'].forEach(name => {
+    const field = templateForm[name]?.closest('label');
+    if (field) field.hidden = !!on;
+  });
+  if (on) document.querySelector('#splice-warning').hidden = true;
+}
+
 function setMode(next) {
   mode = next;
   document.querySelectorAll('[data-mode]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.mode === next)));
@@ -95,6 +114,12 @@ function setMode(next) {
       glyph.replaceWith(placeholder);
     }
     relationshipField.hidden = next !== 'convert';
+    document.querySelector('#json-toggle').hidden = next !== 'convert';
+    if (next !== 'convert') {
+      const box = document.querySelector('#json-mode');
+      if (box) box.checked = false;
+    }
+    applyJsonMode();
     result.replaceChildren(paragraph('Nothing checked yet.'));
     icons();
   }
@@ -107,6 +132,7 @@ templateForm.onreset = () => {
   if (warning) warning.hidden = true;
 };
 templateForm.body.addEventListener('input', checkSplice);
+document.querySelector('#json-mode')?.addEventListener('change', applyJsonMode);
 taskForm.onreset = () => draft.replaceChildren(paragraph('No draft yet.'));
 
 async function send(url, payload, target, button, busyLabel, render) {
@@ -207,6 +233,8 @@ function renderConversion(data) {
     data.ambiguous.forEach(a => list.append(element('li', { textContent: a.text })));
     nodes.push(element('h3', { textContent: 'Kept for human review' }), list);
   }
+  if (data.utility_json) nodes.push(jsonBlock('Utility version as JSON', data.utility_json));
+  if (data.split_off_json) nodes.push(jsonBlock('Promotional part as JSON', data.split_off_json));
   nodes.push(paragraph(data.notice, 'notice'));
   return nodes;
 }
@@ -224,6 +252,9 @@ function renderDraft(data) {
     nodes.push(element('p', { className: 'error', textContent: `Promotional wording flagged: ${data.findings.map(f => f.code).join(', ')}. Edit before submitting.` }));
   }
   if (data.reason) nodes.push(paragraph(data.reason, 'notice'));
+  if (data.template_json && document.querySelector('#json-mode-task')?.checked) {
+    nodes.push(jsonBlock('Draft as JSON', data.template_json));
+  }
   nodes.push(paragraph(data.notice, 'notice'));
   return nodes;
 }

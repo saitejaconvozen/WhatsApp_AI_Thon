@@ -1,3 +1,6 @@
+import json
+
+import pytest
 from fastapi.testclient import TestClient
 from templatelab.demo import create_demo
 
@@ -136,3 +139,64 @@ def test_conversion_says_which_context_is_missing(monkeypatch):
         assert data["verdict"] == "NEEDS_CONTEXT"
         assert len(data["missing_context"]) == 2
         assert "transaction" in data["missing_context"][0]
+
+
+PASTED = json.dumps({
+    "templateName": "PERMISSION",
+    "messageBody": {"type": "TEXT", "templateCategory": "UTILITY",
+                    "header": "", "body": "Hi {{bodyVar1}}, your invoice {{id}} is ready.",
+                    "footer": "", "interactionConfiguration": {"interactionType": "NONE"}},
+    "verificationStatus": "VERIFIED", "metaTemplateCategory": "UTILITY"})
+
+
+def test_pasted_json_is_parsed_into_components():
+    from templatelab.demo import from_json
+    parsed = from_json(PASTED)
+    assert parsed["body"].startswith("Hi {{bodyVar1}}")
+    assert parsed["requested_category"] == "UTILITY"
+    assert parsed["name"] == "PERMISSION"
+
+
+@pytest.mark.parametrize("text, fragment", [
+    ("not json at all", "valid JSON"),
+    ('[{"a":1},{"b":2}]', "single template"),
+    ('{"messageBody": {"body": "   "}}', "No message body"),
+])
+def test_bad_pasted_json_is_rejected_clearly(text, fragment):
+    from fastapi import HTTPException
+    from templatelab.demo import from_json
+    with pytest.raises(HTTPException) as caught:
+        from_json(text)
+    assert fragment in caught.value.detail
+
+
+def test_json_input_and_output_round_trip(monkeypatch):
+    from templatelab import demo
+    monkeypatch.setattr(demo, "convert", lambda record, model, **kw: {
+        "verdict": "CONVERTIBLE", "reason": "ok", "method": "checklist",
+        "before": {"available": True, "utility_probability": .4},
+        "after": {"available": True, "utility_probability": .8},
+        "utility": {"header": "", "body": "Your invoice {{id}} is ready.", "footer": "", "buttons": "View\nHelp"},
+        "split_off": None, "removed": [], "ambiguous": [], "needs_human": False, "checklist": {}})
+    with TestClient(demo.create_demo(predictor=Predictor())) as client:
+        data = client.post('/api/convert', json={"template_json": PASTED}).json()
+        assert data["verdict"] == "CONVERTIBLE"
+        rendered = data["utility_json"]
+        assert rendered["templateName"] == "PERMISSION"
+        assert rendered["messageBody"]["templateCategory"] == "UTILITY"
+        assert rendered["messageBody"]["body"] == "Your invoice {{id}} is ready."
+        # Buttons come back as a list, matching the export shape rather than a blob.
+        assert rendered["messageBody"]["buttons"] == ["View", "Help"]
+
+
+def test_generation_returns_a_pasteable_template_json(monkeypatch):
+    from templatelab import demo
+    monkeypatch.setattr(demo, "generate", lambda task, model, **kw: {
+        "possible": True, "verdict": "ALREADY_UTILITY", "purpose": "billing", "method": "checklist",
+        "template": {"name": "INVOICE_READY", "header": "", "body": "Your invoice {{id}} is ready.",
+                     "footer": "", "buttons": "View invoice"},
+        "score": {"available": True, "utility_probability": .8}, "findings": [], "reason": ""})
+    with TestClient(demo.create_demo(predictor=Predictor())) as client:
+        data = client.post('/api/generate', json={"task": "invoice is ready"}).json()
+        assert data["template_json"]["templateName"] == "INVOICE_READY"
+        assert data["template_json"]["messageBody"]["buttons"] == ["View invoice"]

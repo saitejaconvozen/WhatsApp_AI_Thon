@@ -173,6 +173,7 @@ def rewrite_prompt(components, removed):
 def convert(record, baseline, purpose=None, relationship_confirmed=False):
     """Decide whether a template can become UTILITY, and produce it if so."""
     components = components_of(record)
+    chosen_purpose = purpose
     purpose = purpose or detect_purpose(components["body"])
     checklist = assess({**components, "purpose": purpose,
                         "relationship_confirmed": relationship_confirmed,
@@ -237,6 +238,11 @@ def convert(record, baseline, purpose=None, relationship_confirmed=False):
                 "removed": [], "method": method,
                 "reason": "Removing the promotional content leaves no transactional message behind."}
 
+    # Re-detect on the edited body unless the caller pinned a purpose. Detecting
+    # on the original lets a promotional sentence choose the event — "20% off your
+    # next booking" selects `appointment` — which then fails once that sentence is
+    # removed, rejecting a conversion that actually worked.
+    purpose = chosen_purpose or detect_purpose(kept["body"]) or purpose
     rechecked = assess({**kept, "purpose": purpose, "relationship_confirmed": relationship_confirmed,
                         "format": record.get("format", "TEXT")})
     if rechecked["category"] != "UTILITY_CANDIDATE":

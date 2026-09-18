@@ -21,10 +21,12 @@
 
     <div class="workspace" id="template-workspace">
       <section>
-        <h2 id="input-heading">Template</h2>
+        <div class="section-row"><h2 id="input-heading">Template</h2>
+          <label class="toggle" id="json-toggle" hidden><input type="checkbox" id="json-mode"> Paste JSON instead</label></div>
         <form id="template-form">
           <label>Category submitted to Meta<select name="requested_category"><option value="UTILITY" selected>Utility</option><option value="MARKETING">Marketing</option><option value="UNKNOWN">Not specified</option></select></label>
           <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+          <label id="json-field" hidden>Template JSON<textarea name="template_json" rows="8" maxlength="20000" placeholder='Paste the full template record, e.g. {"templateName": "...", "messageBody": {"body": "..."}}'></textarea></label>
           <p id="splice-warning" class="splice" hidden></p>
           <label>Body<textarea name="body" maxlength="6000" rows="7" required placeholder="Your invoice {{invoice_id}} is due on {{due_date}}."></textarea></label>
           <label>Footer<input name="footer" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
@@ -41,6 +43,7 @@
         <h2>What do you need to tell the customer?</h2>
         <form id="task-form">
           <label>Task<textarea name="task" maxlength="2000" rows="4" required placeholder="Tell the tenant their rent receipt is generated for this month"></textarea></label>
+          <label class="toggle inline"><input type="checkbox" id="json-mode-task"> Return the draft as JSON too</label>
           <label>Business context<textarea name="context" maxlength="4000" rows="3" placeholder="The transaction and facts to preserve. Optional."></textarea></label>
           <label>Service event<select name="purpose">
             <option value="" selected>Detect automatically</option>
