@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from .compose import as_template_json, convert, generate
+from .compose import IRREDUCIBLY_MARKETING, as_template_json, convert, generate
 from .data import Store, normalize_rows, suggest_mapping
 from .llm import Reviewer, clause_definitions
 from .serving_candidate import Candidate
@@ -182,9 +182,48 @@ def create_demo(data_dir=None, predictor=None):
                                   if result.get("split_off") else None,
                 "notice": "Candidate edit for human review. Meta decides the category."}
 
+    drafter = {}
+
+    def get_drafter():
+        """Built once, on first use. Loading the encoder costs seconds, and a
+        deployment without the fine-tuned encoder or forms.json must still be
+        able to draft -- it just falls back to the checklist path."""
+        if "value" not in drafter:
+            try:
+                from .draft import Drafter
+                drafter["value"] = Drafter(Store(data_dir) if data_dir else Store(ROOT / ".data"))
+            except Exception:
+                drafter["value"] = None
+        return drafter["value"]
+
     @app.post("/api/generate")
     def generate_template(payload: Task):
         throttle(llm_recent, LLM_LIMIT, "drafting")
+        task = payload.task + (("\n" + payload.context) if payload.context.strip() else "")
+        maker = get_drafter()
+        if maker is not None:
+            try:
+                drafted = maker.draft(task)
+            except Exception:
+                drafted = None
+            if drafted is not None:
+                template = ({"header": "", "body": drafted["body"],
+                             "footer": "", "buttons": drafted.get("buttons", ""),
+                             "name": drafted.get("name", "")} if drafted.get("possible") else None)
+                return {"possible": drafted.get("possible"),
+                        "verdict": "DRAFTED" if drafted.get("possible") else IRREDUCIBLY_MARKETING,
+                        "purpose": payload.purpose or None, "method": "forms+reward",
+                        "template": template, "score": drafted.get("score"),
+                        "findings": [], "reason": drafted.get("reason"),
+                        # Which shape Meta approves this often, stated only when the
+                        # draft actually belongs to that shape.
+                        "form": drafted.get("form"),
+                        "form_matched": drafted.get("form_matched"),
+                        "form_approval_rate": drafted.get("form_approval_rate"),
+                        "evidence": drafted.get("evidence"),
+                        "template_json": as_template_json(template, template.get("name", ""))
+                                         if template else None,
+                        "notice": "Drafted candidate, not an approved template. Meta decides the category."}
         try:
             result = generate(payload.task, model, purpose=payload.purpose or None,
                               context=payload.context)
