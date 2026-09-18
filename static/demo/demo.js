@@ -43,21 +43,35 @@ function templateCard(title, template) {
   return card;
 }
 
-function looksSpliced(body) {
-  const greeting = /\b(?:hi|hello|dear|hey)\b[\s,]/gi;
-  const found = [...body.matchAll(greeting)].map(m => m.index);
+function spliceAt(body) {
   // A greeting well past the opening usually means a second template was pasted
-  // on top of the first. That once made a correct verdict look wrong.
-  return found.some(index => index > 60);
+  // on top of the first. Returns where the second one starts, or -1.
+  const greeting = /\b(?:hi|hello|dear|hey)\b[\s,]/gi;
+  const found = [...body.matchAll(greeting)].map(m => m.index).filter(index => index > 60);
+  return found.length ? found[found.length - 1] : -1;
+}
+
+function looksSpliced(body) {
+  return spliceAt(body) !== -1;
 }
 
 function checkSplice() {
   const warning = document.querySelector('#splice-warning');
   if (!warning) return;
-  const body = templateForm.body.value;
-  const spliced = looksSpliced(body);
-  warning.hidden = !spliced;
-  if (spliced) warning.textContent = 'This looks like two templates pasted together — there is a greeting partway through the body. Classify one template at a time, or the mixed content will be judged as one message.';
+  const index = spliceAt(templateForm.body.value);
+  warning.hidden = index === -1;
+  if (index === -1) return;
+  // A warning that can only be read is one that gets classified straight past,
+  // so it carries the fix as a button.
+  warning.replaceChildren(
+    element('span', { textContent: 'This looks like two templates pasted together — a greeting starts partway through the body. Judged as one message, the mixed content reads as marketing.' }),
+    element('button', { type: 'button', className: 'splice-fix', id: 'splice-fix',
+                        textContent: 'Keep only the second message' }));
+  document.querySelector('#splice-fix').onclick = () => {
+    templateForm.body.value = templateForm.body.value.slice(index).trim();
+    checkSplice();
+    templateForm.body.focus();
+  };
 }
 
 function setMode(next) {
