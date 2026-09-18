@@ -338,6 +338,60 @@ def untangle(components, ambiguous, purpose):
     return candidate, promotional, f"llm-untangle:{config['backend']}"
 
 
+def restate_prompt(components):
+    return (
+        "You restate a WhatsApp Business template as a plain service update.\n\n"
+        "Category definitions:\n\n" + policy_text() + "\n\n"
+        "Template:\n"
+        + "\n".join(f"{k.capitalize()}: {components[k] or '(empty)'}" for k in COMPONENTS) + "\n\n"
+        "This one carries no obvious offer wording, yet it reads as marketing: the framing "
+        "sells rather than informs.\n\n"
+        "Rules you must follow:\n"
+        "1. State only what has happened or what the recipient must do about a transaction "
+        "they already have. Keep every {{placeholder}}, amount, date and identifier.\n"
+        "2. Invent nothing. Add no transaction, benefit, product or fact that is not already "
+        "in the template. You may only remove and restate.\n"
+        "3. Drop persuasion: no urgency, no benefits, no invitations to browse or enquire.\n"
+        "4. If the template is an advertisement with no transaction behind it, set possible to "
+        "false. Do not dress it up as a service message.\n\n"
+        'Reply with JSON only:\n'
+        '{"possible": true|false, "header": "", "body": "", "footer": "", "buttons": "", '
+        '"removed": ["the persuasive parts you dropped"], "reason": "one sentence"}'
+    )
+
+
+def restate(components, baseline, purpose, before):
+    """Rewrite a template whose framing, not its vocabulary, reads as marketing.
+
+    Attempted only when the model reads the template as marketing and a
+    transaction is already named, so there is something real to restate. The
+    result must keep every placeholder, gain no length, come back clean through
+    the checklist and be ratified by the model; anything else is refused.
+    """
+    payload, config = llm_json(restate_prompt(components))
+    if payload.get("possible") is False:
+        raise Unavailable(str(payload.get("reason", ""))[:200] or "No transaction behind this template.")
+    candidate = {key: (button_text(payload.get(key)) if key == "buttons" else str(payload.get(key) or ""))
+                 for key in COMPONENTS}
+    if not candidate["body"].strip() or not has_anchor(candidate):
+        raise Unavailable("The rewrite dropped the transactional anchor.")
+    if promotion_findings(candidate):
+        raise Unavailable("The rewrite still trips the promotional checklist.")
+    original = set(PLACEHOLDER.findall(record_text(components)))
+    if original - set(PLACEHOLDER.findall(record_text(candidate))):
+        raise Unavailable("The rewrite dropped a placeholder.")
+    # Restating should shorten. Growth means facts were added, which is the one
+    # thing this path must never do.
+    if len(candidate["body"]) > len(components["body"]) * 1.1 + 20:
+        raise Unavailable("The rewrite added material rather than restating.")
+    scored = score({**components, **candidate, "format": "TEXT"}, baseline)
+    if not scored.get("available") or scored.get("category") != "UTILITY":
+        raise Unavailable("The model still reads the rewrite as marketing.")
+    removed = [{"component": "body", "text": str(t)[:300]}
+               for t in payload.get("removed", []) if str(t).strip()][:8]
+    return candidate, removed, scored, f"llm-restate:{config['backend']}"
+
+
 def convert(record, baseline, purpose=None, relationship_confirmed=False):
     """Decide whether a template can become UTILITY, and produce it if so."""
     components = components_of(record)
@@ -354,11 +408,36 @@ def convert(record, baseline, purpose=None, relationship_confirmed=False):
                 "before": before, "after": None, "utility": None, "split_off": None,
                 "removed": [], "method": "checklist", "reason": reason}
 
+    def try_restate(fallback):
+        """The model's verdict decides whether to attempt, not the checklist's vocabulary.
+
+        Skipping the attempt whenever the checklist saw nothing left 836 of 1,180
+        downgraded templates with no rewrite tried at all.
+        """
+        if not has_anchor(components):
+            return fallback
+        if not (before.get("available") and before.get("category") == "MARKETING"):
+            return fallback
+        try:
+            candidate, removed, after, method = restate(components, baseline, purpose, before)
+        except Unavailable as exc:
+            return {**fallback, "restate_attempted": True, "restate_failed": str(exc)[:200]}
+        promotional = [r["text"] for r in removed if r.get("text")]
+        return {"verdict": SPLIT_RECOMMENDED if promotional else CONVERTIBLE,
+                "purpose": purpose, "checklist": checklist, "before": before, "after": after,
+                "utility": candidate, "removed": removed, "ambiguous": [], "selection": None,
+                "split_off": ({"body": " ".join(promotional)[:1000],
+                               "note": "Send this as a separate MARKETING template to an opted-in audience."}
+                              if promotional else None),
+                "method": method, "needs_human": False, "restate_attempted": True,
+                "reason": "The template named a real transaction but was framed as marketing. "
+                          "It has been restated as a service update and re-scored."}
+
     if checklist["category"] == "AUTHENTICATION":
         return {**needs_context("Authentication content requires a separate authentication workflow."),
                 "verdict": "AUTHENTICATION"}
     if checklist["category"] == "NEEDS_REVIEW":
-        return needs_context(checklist["summary"])
+        return try_restate(needs_context(checklist["summary"]))
 
     if not findings and checklist["category"] == "UTILITY_CANDIDATE":
         # The checklist only looks for promotional wording; it cannot tell a reply
@@ -371,10 +450,11 @@ def convert(record, baseline, purpose=None, relationship_confirmed=False):
                   if not disputed else
                   "The checklist found no promotional wording, but the trained model reads this as marketing. "
                   "The checklist only matches wording; it cannot judge intent. Treat this as needing a human.")
-        return {"verdict": ALREADY_UTILITY, "purpose": purpose, "checklist": checklist,
-                "before": before, "after": None, "utility": None, "split_off": None,
-                "removed": [], "method": "checklist", "disputed_by_model": bool(disputed),
-                "reason": reason}
+        already = {"verdict": ALREADY_UTILITY, "purpose": purpose, "checklist": checklist,
+                   "before": before, "after": None, "utility": None, "split_off": None,
+                   "removed": [], "method": "checklist", "disputed_by_model": bool(disputed),
+                   "reason": reason}
+        return try_restate(already) if disputed else already
 
     if not has_anchor(components):
         return {"verdict": IRREDUCIBLY_MARKETING, "purpose": purpose, "checklist": checklist,
@@ -582,3 +662,108 @@ def generate(task, baseline, purpose=None, context=""):
 def generate_findings_guard(template):
     """A draft that trips the promotional checklist is reported, never silently returned clean."""
     return promotion_findings({key: template.get(key, "") for key in COMPONENTS})
+
+
+# Ordered: the first match wins, so "Due_Date" must meet the date rule before
+# the amount rule, which would otherwise claim it on the word "due".
+SAMPLE_RULES = [
+    (r"link|url|href|click here|pay here|track|view|anytime|below", "https://nbr.in/p/8c31fa"),
+    (r"date|deadline|expiry|expires|scheduled (?:on|for)|by\b|due on", "12 October"),
+    (r"time|slot|between|at\b", "3:30 PM"),
+    (r"amount|price|payment of|balance|emi|fee|charge|rs\.?|₹|worth|overdue", "₹4,250"),
+    (r"hi|hello|dear|name|customer|tenant|owner|user|agent|manager", "Rahul"),
+    (r"phone|mobile|contact", "98••••3210"),
+    (r"address|property|location|city|area|flat|apartment", "Indiranagar, Bengaluru"),
+    (r"type|plan|category|service|product", "Home"),
+    (r"status|state", "confirmed"),
+    (r"percent|discount|waiver", "10"),
+    (r"account|order|invoice|booking|ticket|case|receipt|id|number|ref|no\b", "8421337"),
+]
+
+
+def sample_for(name, context=""):
+    """A plausible transactional value, from the placeholder name or its sentence.
+
+    Most placeholders in this corpus are named bodyVar1, bodyVar2 and so on, which
+    say nothing. The words immediately before them do: "payment of" wants an
+    amount, "Pay here:" wants a link, "Hi" wants a name.
+    """
+    for source in (name, context):
+        if not source:
+            continue
+        for pattern, value in SAMPLE_RULES:
+            if re.search(pattern, source, re.I):
+                return value
+    return "8421337"
+
+
+# Repeats get a different value each time, so two links in one message do not
+# both read as the same URL.
+VARIANTS = {
+    "https://nbr.in/p/8c31fa": ["https://nbr.in/p/8c31fa", "https://nbr.in/b/47dd10", "https://nbr.in/t/9ba2e5"],
+    "₹4,250": ["₹4,250", "₹1,890", "₹12,400"],
+    "8421337": ["8421337", "5530912", "7104468"],
+    "12 October": ["12 October", "18 October", "3 November"],
+    "Rahul": ["Rahul", "Priya", "Arjun"],
+}
+
+
+def fill_by_rule(text):
+    used = {}
+
+    def replace(match):
+        # The tail of the preceding text is what hints at the value's type.
+        base = sample_for(match.group(0)[2:-2], text[max(0, match.start() - 28):match.start()])
+        options = VARIANTS.get(base, [base])
+        index = used.get(base, 0)
+        used[base] = index + 1
+        return options[index % len(options)]
+
+    return PLACEHOLDER.sub(replace, text)
+
+
+def fill_prompt(components):
+    return (
+        "You fill the placeholders in a WhatsApp Business utility template with realistic "
+        "sample values, so a reviewer can read it as a real message.\n\n"
+        "Template:\n"
+        + "\n".join(f"{k.capitalize()}: {components[k] or '(empty)'}" for k in COMPONENTS) + "\n\n"
+        "Rules:\n"
+        "1. Replace every {{placeholder}} with a plausible value that fits the sentence: an "
+        "Indian first name for a recipient, an amount like ₹4,250, a date like 12 October, an "
+        "identifier like 8421337, a short https link.\n"
+        "2. Change nothing else. Keep the wording, order and punctuation exactly as given.\n"
+        "3. Add no offer, discount, urgency or promotional phrasing of any kind. The message "
+        "must still read as a plain service update.\n\n"
+        'Reply with JSON only:\n'
+        '{"header": "", "body": "", "footer": "", "buttons": ""}'
+    )
+
+
+def fill_sample_values(components, baseline, purpose=None):
+    """Fill placeholders with sample values, keeping the result a utility message.
+
+    A filled template is only returned when the classifier still reads it as
+    utility and the promotional checklist stays clean. Otherwise the rule-based
+    fill is used, and failing that the placeholders are left alone: an unreadable
+    template is better than one that quietly became an advertisement.
+    """
+    def acceptable(candidate):
+        if promotion_findings(candidate):
+            return False
+        result = baseline.predict({**candidate, "format": "TEXT",
+                                   "requested_category": "UTILITY"})
+        return result.get("available") and result.get("category") == "UTILITY"
+
+    try:
+        payload, _ = llm_json(fill_prompt(components), require_possible=False)
+        candidate = {key: (button_text(payload.get(key)) if key == "buttons" else str(payload.get(key) or ""))
+                     for key in COMPONENTS}
+        if candidate["body"].strip() and not PLACEHOLDER.search(candidate["body"]) and acceptable(candidate):
+            return candidate, "llm"
+    except Unavailable:
+        pass
+    ruled = {key: fill_by_rule(value) for key, value in components.items()}
+    if ruled["body"].strip() and acceptable(ruled):
+        return ruled, "rule"
+    return components, "unfilled"

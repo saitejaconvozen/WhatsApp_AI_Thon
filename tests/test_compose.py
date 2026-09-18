@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 
@@ -393,3 +394,36 @@ def test_a_placeholder_may_move_into_the_promotional_half(baseline, monkeypatch)
     result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
     assert result["verdict"] == compose.SPLIT_RECOMMENDED
     assert "{{1}}" in result["split_off"]["body"]
+
+
+def test_sample_values_fit_the_name_or_the_sentence():
+    """Most placeholders here are named bodyVarN, so context decides the value."""
+    from templatelab.compose import fill_by_rule
+    named = fill_by_rule("Your EMI of {{EMI_Amount}} on A/c {{Account_Number}} due {{Due_Date}}. Pay: {{Payment_Link}}")
+    assert "₹" in named and "October" in named and "https://" in named and "{{" not in named
+
+    generic = fill_by_rule("Hi {{bodyVar1}}, your payment of {{bodyVar2}} is due. Pay here: {{bodyVar3}}")
+    assert "Rahul" in generic and "₹" in generic and "https://" in generic
+
+    # Two links in one message must not read as the same URL.
+    twice = fill_by_rule("Pay here: {{a}}. Check your booking anytime: {{b}}")
+    links = re.findall(r"https://\S+", twice)
+    assert len(links) == 2 and links[0] != links[1]
+
+
+def test_a_fill_that_stops_reading_as_utility_is_rejected(baseline, monkeypatch):
+    """A filled template that drifted into marketing is worse than an unfilled one."""
+    enable_llm(monkeypatch, {"header": "", "body": "Hi Rahul, 50% OFF your renewal! Buy now.",
+                             "footer": "", "buttons": ""})
+    components = {"header": "", "body": "Hi {{1}}, your invoice {{2}} is due.", "footer": "", "buttons": ""}
+    filled, how = compose.fill_sample_values(components, baseline)
+    assert how != "llm"
+    assert "50% OFF" not in filled["body"]
+
+
+def test_a_fill_leaving_placeholders_behind_is_rejected(baseline, monkeypatch):
+    enable_llm(monkeypatch, {"header": "", "body": "Hi Rahul, your invoice {{2}} is due.",
+                             "footer": "", "buttons": ""})
+    components = {"header": "", "body": "Hi {{1}}, your invoice {{2}} is due.", "footer": "", "buttons": ""}
+    filled, how = compose.fill_sample_values(components, baseline)
+    assert how != "llm"
