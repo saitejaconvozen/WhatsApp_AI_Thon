@@ -373,3 +373,23 @@ def test_rebuilt_promotional_vocabulary_sees_real_marketing(text):
 def test_rebuilt_vocabulary_does_not_fire_on_service_updates(text):
     from templatelab.policy import promotion_findings
     assert not promotion_findings({"body": text}), text
+
+
+def test_a_dropped_placeholder_is_refused(baseline, monkeypatch):
+    """4 of 26 conversions silently lost a business value before this guard."""
+    enable_llm(monkeypatch, {"candidates": [
+        {"header": "", "body": "Your {{plan_name}} renewal is due.", "footer": "", "buttons": ""}],
+        "promotional": ["20% off"]})
+    result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.NEEDS_CONTEXT
+    assert "{{date}}" in result["reason"] and "business data" in result["reason"]
+
+
+def test_a_placeholder_may_move_into_the_promotional_half(baseline, monkeypatch):
+    """Splitting is allowed to relocate a value; only losing one is not."""
+    enable_llm(monkeypatch, {"candidates": [
+        {"header": "", "body": "Your {{plan_name}} renewal is due on {{date}}.", "footer": "", "buttons": ""}],
+        "promotional": ["20% off for {{1}}"]})
+    result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.SPLIT_RECOMMENDED
+    assert "{{1}}" in result["split_off"]["body"]

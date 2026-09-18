@@ -458,6 +458,21 @@ def convert(record, baseline, purpose=None, relationship_confirmed=False):
     split_off = ({"body": " ".join(promotional)[:1000],
                   "note": "Send this as a separate MARKETING template to an opted-in audience."}
                  if promotional else None)
+
+    # Nothing may vanish. A placeholder is a real business value, and 4 of 26
+    # conversions dropped one before this guard existed — the anchor check only
+    # asks that *a* reference survives, not that every one does. It may move to
+    # the promotional half, but it cannot simply disappear.
+    original = set(PLACEHOLDER.findall(record_text(components)))
+    surviving = set(PLACEHOLDER.findall(record_text(kept)))
+    surviving |= set(PLACEHOLDER.findall(split_off["body"])) if split_off else set()
+    vanished = sorted(original - surviving)
+    if vanished:
+        return {**needs_context(
+            f"The edit dropped {', '.join(vanished)}, which carries business data. "
+            "A rewrite may move a value into the promotional half, but it cannot lose one."),
+            "before": before, "after": after, "removed": removed, "method": method,
+            "selection": selection}
     return {"verdict": SPLIT_RECOMMENDED if split_off else CONVERTIBLE,
             "purpose": purpose, "checklist": checklist, "before": before, "after": after,
             "utility": kept, "split_off": split_off, "removed": removed,
