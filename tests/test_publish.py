@@ -71,3 +71,22 @@ def test_benchmark_publishing_omits_private_rows_and_endpoint(store, monkeypatch
     payload = publish.public_benchmark(store)
     assert SECRET not in json.dumps(payload)
     assert payload["report"]["metrics"]["end_to_end"]["accuracy"] == .73
+
+
+def test_published_conversions_carry_no_template_text(store, tmp_path, monkeypatch):
+    """conversions.jsonl is one template per line; only counts may be published."""
+    rows = [{"id": "a", "verdict": "SPLIT_RECOMMENDED", "utility": SECRET, "split_off": SECRET,
+             "body": SECRET, "name": SECRET, "after_category": "UTILITY", "before": .3, "after": .9,
+             "placeholders_lost": ["{{1}}"]},
+            {"id": "b", "verdict": "NEEDS_CONTEXT", "body": SECRET}]
+    path = store.directory / "conversions.jsonl"
+    path.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    payload = publish.public_conversions(store)
+    assert SECRET not in json.dumps(payload)
+    assert payload["ratified_as_utility"] == 1
+    assert payload["lost_a_placeholder"] == 1
+    assert payload["templates"] == 2
+
+
+def test_missing_conversion_file_is_reported_not_fatal(store):
+    assert publish.public_conversions(store)["available"] is False

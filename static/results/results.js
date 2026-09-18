@@ -53,6 +53,9 @@ function render() {
     <section id="errors">${sectionHead('Actual error examples', 'The original random-holdout errors, not the chronological experiment errors.', 'Full template inspection')}
       ${report.errors.available ? `<div class="toolbar"><input id="error-query" type="search" aria-label="Search error examples" placeholder="Search template names or any message component" value="${escapeHtml(query)}"><select id="error-direction" aria-label="Error direction"><option value="all">Both error directions</option><option value="false_utility">False utility</option><option value="false_marketing">False marketing</option></select><select id="review-status" aria-label="Review status"><option value="all">All review statuses</option><option value="pending">Pending</option><option value="context_needed">Context needed</option><option value="reviewed">Reviewed</option></select></div><div id="error-table"></div>` : `<div class="notice">${escapeHtml(report.errors.reason)}</div>`}
     </section>
+    <section id="conversion">${sectionHead('Converting marketing to utility', 'Every template the business submitted as utility and Meta recorded as marketing, run through the converter.', 'Batch result')}
+      ${report.conversions?.available ? conversionHtml(report.conversions) : `<div class="empty">${escapeHtml(report.conversions?.reason || 'No batch conversion has been run.')}</div>`}
+    </section>
     <section id="ideas">${sectionHead('What could be built next', 'Every direction identified for this project, with what has already been tried and what it would take.', 'Roadmap')}
       ${ideasHtml()}
     </section>
@@ -99,6 +102,7 @@ function baselineHtml(r, stale) {
     <div><h3>Measured performance</h3><div class="bars">${bar('Accuracy', r.accuracy)}${bar('Utility precision', r.per_class.UTILITY.precision, 'green')}${bar('Utility recall', r.per_class.UTILITY.recall, 'amber')}</div><p class="small" style="margin-top:18px">${count(r.train_families)} training families / ${count(r.test_families)} holdout families. Majority accuracy: ${pct(r.majority_accuracy)}. Normalized family overlap: ${count(r.group_overlap)}.</p></div></div>
     <div class="notice blue">Of ${count(r.predicted_utility_count)} utility predictions, ${count(m[1][1])} matched Meta's utility label and ${count(m[0][1])} were recorded marketing. That is what utility precision measures.</div>
     ${r.slices ? slicesHtml(r.slices) : ''}
+    ${report.reliability ? reliabilityHtml(report.reliability) : ''}
     ${r.bands ? bandHtml(r.bands, r.thresholds) : ''}
     <details><summary>Baseline methodology and limitations</summary><p class="small">Snapshot: ${escapeHtml(r.trained_at)}. ${escapeHtml(r.split)}</p><ul>${r.limitations.map(text => `<li>${escapeHtml(text)}</li>`).join('')}</ul></details>`;
 }
@@ -185,6 +189,35 @@ function ideasHtml() {
         const [label, tone, mark] = STATUS[status];
         return `<li>${icon(mark)}<div><strong>${escapeHtml(title)}</strong> <span class="pill ${tone}">${escapeHtml(label)}</span><p>${escapeHtml(text)}</p></div></li>`;
       }).join('')}</ul>`).join('')}`;
+}
+
+function reliabilityHtml(rel) {
+  const cv = rel.cross_validation;
+  return `<h3 style="margin-top:28px">How much to trust these numbers</h3>
+    <div class="table-wrap"><table class="comparison-table"><thead><tr><th>Counted as</th><th>All templates</th><th>Requested utility</th><th>Sample</th></tr></thead><tbody>
+    <tr><td><strong>Records</strong><p class="excerpt">What production receives, repeats included</p></td><td>${pct(rel.record_level.all)}</td><td>${pct(rel.record_level.requested_utility)}</td><td>${count(rel.record_level.samples)}</td></tr>
+    <tr><td><strong>Families</strong><p class="excerpt">Each distinct wording counted once</p></td><td>${pct(rel.family_level.all)}</td><td>${pct(rel.family_level.requested_utility)}</td><td>${count(rel.family_level.samples)}</td></tr>
+    </tbody></table></div>
+    <div class="notice">${escapeHtml(rel.note)}</div>
+    <dl class="facts"><div><dt>${cv.folds}-fold cross-validation (${escapeHtml(cv.scope)})</dt><dd>${pct(cv.mean)} &plusmn; ${(cv.sd * 100).toFixed(1)}pp</dd></div></dl>
+    <p class="small">The fold spread is tight, so the plateau is a property of the data rather than of one unlucky split.</p>`;
+}
+
+function conversionHtml(c) {
+  const share = c.templates ? c.ratified_as_utility / c.templates : 0;
+  const order = ['SPLIT_RECOMMENDED', 'ALREADY_UTILITY', 'NEEDS_CONTEXT', 'IRREDUCIBLY_MARKETING', 'ERROR'];
+  const label = {
+    SPLIT_RECOMMENDED: 'Converted and split',
+    ALREADY_UTILITY: 'No promotional wording found',
+    NEEDS_CONTEXT: 'Could not be separated safely',
+    IRREDUCIBLY_MARKETING: 'Nothing transactional to keep',
+    ERROR: 'Failed',
+  };
+  return `<div class="metrics">${metric('Templates attempted', count(c.templates), escapeHtml(c.scope || ''))}${metric('Rewrites produced', count(c.produced_a_rewrite), 'Passed every safety guard')}${metric('Ratified as utility', count(c.ratified_as_utility), pct(share) + ' of those attempted')}${metric('Average score gain', c.mean_score_gain == null ? 'n/a' : `+${(c.mean_score_gain * 100).toFixed(1)}pp`, 'On ratified conversions only')}</div>
+    <div class="notice blue">A conversion counts only when the trained classifier reads the result as utility. Counting rewrites instead would reward a permissive filter: a checklist can only see wording it has vocabulary for.</div>
+    <div class="grid-two"><div><h3>What happened to each template</h3><div class="table-wrap"><table class="comparison-table"><thead><tr><th>Outcome</th><th>Templates</th><th>Share</th></tr></thead><tbody>${order.filter(k => c.verdicts?.[k]).map(k => `<tr><td>${escapeHtml(label[k] || k)}</td><td>${count(c.verdicts[k])}</td><td>${pct(c.verdicts[k] / c.templates)}</td></tr>`).join('')}</tbody></table></div></div>
+    <div><h3>Safety</h3><dl class="facts"><div><dt>Rewrites the classifier rejected</dt><dd>${count(c.produced_a_rewrite - c.ratified_as_utility)}</dd></div><div><dt>Conversions that lost a placeholder</dt><dd>${count(c.lost_a_placeholder)}</dd></div><div><dt>Failed requests</dt><dd>${count(c.failures)}</dd></div></dl>
+    <p class="small">${escapeHtml(c.limitation || '')}</p></div></div>`;
 }
 
 function slicesHtml(slices) {

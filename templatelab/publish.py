@@ -16,6 +16,9 @@ from .data import Store, summarize
 from .error_review import ErrorReviews
 from .experiments import Experiments
 from .model import Baseline
+
+CONVERSION_FIELDS = ("templates", "verdicts", "produced_a_rewrite", "ratified_as_utility",
+                     "ratified_share", "mean_score_gain", "failures")
 from .benchmark import latest_report
 from .improve import summary as improvement_summary
 
@@ -60,6 +63,23 @@ def public_benchmark(store):
     else:
         report["metrics"] = None
     return {"available": True, "report": report}
+
+
+def public_conversions(store):
+    """Aggregate counts only. conversions.jsonl holds template text line by line."""
+    from .batch import load_done, summarise
+    path = store.directory / "conversions.jsonl"
+    if not path.exists():
+        return {"available": False, "reason": "No batch conversion has been run."}
+    rows = list(load_done(path).values())
+    if not rows:
+        return {"available": False, "reason": "No conversions recorded yet."}
+    summary = pick(summarise(rows), CONVERSION_FIELDS)
+    lost = sum(1 for r in rows if r.get("placeholders_lost"))
+    return {"available": True, **summary, "lost_a_placeholder": lost,
+            "scope": "Templates submitted as UTILITY and recorded MARKETING by Meta.",
+            "limitation": "A ratified conversion is one the local classifier reads as utility. "
+                          "No converted template has been submitted to Meta."}
 
 
 def build_payload(store):
