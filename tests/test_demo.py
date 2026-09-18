@@ -119,3 +119,20 @@ def test_every_policy_clause_resolves_to_text():
     assert set(definitions) == {"U1", "U2", "U3", "U4", "M1", "M2", "M3", "M4", "M5", "M6"}
     assert all(len(text) > 20 for text in definitions.values())
     assert "**" not in "".join(definitions.values())
+
+
+def test_conversion_says_which_context_is_missing(monkeypatch):
+    """A NEEDS_CONTEXT verdict is unactionable unless it names the gap."""
+    from templatelab import demo
+    monkeypatch.setattr(demo, "convert", lambda record, model, **kw: {
+        "verdict": "NEEDS_CONTEXT", "reason": "not enough evidence", "method": "checklist",
+        "before": {"available": True, "utility_probability": None}, "after": None,
+        "utility": None, "split_off": None, "removed": [], "ambiguous": [], "needs_human": False,
+        "checklist": {"findings": [],
+                      "missing_context": ["Confirm that this message relates to an actual transaction.",
+                                          "Select the event that triggers this message."]}})
+    with TestClient(demo.create_demo(predictor=Predictor())) as client:
+        data = client.post('/api/convert', json={"body": "Can we call you about property search?"}).json()
+        assert data["verdict"] == "NEEDS_CONTEXT"
+        assert len(data["missing_context"]) == 2
+        assert "transaction" in data["missing_context"][0]

@@ -183,9 +183,18 @@ async function explain(payload) {
 function renderConversion(data) {
   const nodes = [element('p', { className: 'category', textContent: (data.verdict || '').replace(/_/g, ' ') })];
   if (data.reason) nodes.push(paragraph(data.reason, 'notice'));
-  const before = data.before?.available ? percent(data.before.utility_probability) : 'Not available';
+  const before = data.before?.available
+    ? (data.before.utility_probability == null
+        ? 'Not scored — submitted as marketing'
+        : percent(data.before.utility_probability))
+    : 'Not available';
   const after = data.after?.available ? percent(data.after.utility_probability) : null;
   nodes.push(definitionList([['Utility score now', before], ...(after ? [['After the change', after]] : []), ['Method', data.method || '—']]));
+  if (data.missing_context?.length) {
+    const list = element('ul', { className: 'clauses' });
+    data.missing_context.forEach(m => list.append(element('li', { textContent: m })));
+    nodes.push(element('h3', { textContent: 'What is missing' }), list);
+  }
   if (data.utility) nodes.push(templateCard('Utility version', data.utility));
   if (data.split_off) nodes.push(templateCard('Promotional part, send separately as marketing', { body: data.split_off.body }));
   if (data.removed?.length) {

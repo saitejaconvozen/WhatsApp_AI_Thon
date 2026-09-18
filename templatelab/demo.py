@@ -133,6 +133,9 @@ def create_demo(data_dir=None, predictor=None):
                 "needs_human": result.get("needs_human", False),
                 "findings": [{"code": f["code"], "component": f["component"], "message": f["message"]}
                              for f in (result.get("checklist") or {}).get("findings", [])],
+                # Without this a NEEDS_CONTEXT verdict says something is missing
+                # but never which thing, leaving no way to act on it.
+                "missing_context": (result.get("checklist") or {}).get("missing_context", []),
                 "notice": "Candidate edit for human review. Meta decides the category."}
 
     @app.post("/api/generate")
