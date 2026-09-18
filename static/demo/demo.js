@@ -208,7 +208,11 @@ async function explain(payload) {
 
 function renderConversion(data) {
   const nodes = [element('p', { className: 'category', textContent: (data.verdict || '').replace(/_/g, ' ') })];
-  if (data.reason) nodes.push(paragraph(data.reason, 'notice'));
+  if (data.disputed_by_model) {
+    nodes.push(element('p', { className: 'disagree', textContent: data.reason }));
+  } else if (data.reason) {
+    nodes.push(paragraph(data.reason, 'notice'));
+  }
   const before = data.before?.available
     ? (data.before.utility_probability == null
         ? 'Not scored — submitted as marketing'

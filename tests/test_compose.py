@@ -72,11 +72,17 @@ def test_model_reply_that_drops_the_anchor_is_discarded(baseline, monkeypatch):
     assert result["method"] == "checklist"
 
 
-def test_model_may_refuse_a_conversion(baseline, monkeypatch):
+def test_a_refusal_only_decides_when_the_checklist_cannot_convert(baseline, monkeypatch):
+    """This asserted the opposite until the veto was measured as harmful.
+
+    A model refusal on a separable template used to return IRREDUCIBLY_MARKETING
+    and discard a working conversion. It now defers to the checklist there, and
+    only decides when the checklist has produced nothing.
+    """
     enable_llm(monkeypatch, {"possible": False, "reason": "Purely promotional."})
-    result = compose.convert(MIXED, baseline, relationship_confirmed=True)
-    assert result["verdict"] == compose.IRREDUCIBLY_MARKETING
-    assert result["method"].startswith("llm:")
+    assert compose.convert(MIXED, baseline, relationship_confirmed=True)["verdict"] == compose.SPLIT_RECOMMENDED
+    refused = compose.convert(PURE_PROMO, baseline, relationship_confirmed=True)
+    assert refused["verdict"] == compose.IRREDUCIBLY_MARKETING
 
 
 def test_llm_rewrite_is_used_when_it_keeps_the_anchor(baseline, monkeypatch):
@@ -209,3 +215,118 @@ def test_anchor_needs_a_transaction_and_a_reference():
     assert has_anchor({"body": "Your order 12345 has shipped."})
     assert not has_anchor({"body": "Rent a property today!"})
     assert not has_anchor({"body": "Your order has shipped."})
+
+
+def test_clean_wording_the_model_calls_marketing_is_reported_as_disputed(baseline, monkeypatch):
+    """The checklist matches wording; only the model can judge intent.
+
+    "Can we call you about your queries" trips the support vocabulary while being
+    lead generation, which Meta records as marketing.
+    """
+    class Marketing:
+        def predict(self, record):
+            return {"available": True, "category": "MARKETING", "utility_probability": .26, "band": "MARKETING"}
+    result = compose.convert({"header": "", "body": "Hi {{1}}, can we call you about your queries?",
+                              "footer": "", "buttons": "", "format": "TEXT"}, Marketing(),
+                             relationship_confirmed=True)
+    assert result["verdict"] == compose.ALREADY_UTILITY
+    assert result["disputed_by_model"] is True
+    assert "needing a human" in result["reason"]
+
+
+def test_agreement_is_not_reported_as_a_dispute(baseline):
+    result = compose.convert(CLEAN, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.ALREADY_UTILITY
+    assert result["disputed_by_model"] is False
+
+
+def test_the_model_cannot_veto_a_working_checklist_conversion(baseline, monkeypatch):
+    """A refusal used to return immediately, discarding a conversion that worked.
+
+    Measured on 68 held-out promo-tripping templates, that veto cut successful
+    conversions from 15 to 3.
+    """
+    enable_llm(monkeypatch, {"possible": False, "reason": "Reads as promotional."})
+    result = compose.convert(MIXED, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.SPLIT_RECOMMENDED
+    assert "{{1}}" in result["utility"]["body"]
+    assert result["method"] == "checklist"
+
+
+def test_the_model_still_decides_when_the_checklist_has_nothing(baseline, monkeypatch):
+    enable_llm(monkeypatch, {"possible": False, "reason": "Purely promotional."})
+    result = compose.convert(PURE_PROMO, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.IRREDUCIBLY_MARKETING
+
+
+TANGLED = {"header": "", "body": "Hi {{1}}, 20% off your {{plan_name}} renewal due on {{date}}.",
+           "footer": "", "buttons": "", "format": "TEXT"}
+
+
+def test_tangled_clause_is_rewritten_and_the_claim_split_out(baseline, monkeypatch):
+    """Deletion cannot resolve a promotion welded to a placeholder."""
+    enable_llm(monkeypatch, {"possible": True, "header": "",
+                             "body": "Hi {{1}}, your {{plan_name}} renewal is due on {{date}}.",
+                             "footer": "", "buttons": "",
+                             "promotional": ["20% off your renewal"], "reason": "separated"})
+    result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
+    assert result["verdict"] in {compose.CONVERTIBLE, compose.SPLIT_RECOMMENDED}
+    assert "{{plan_name}}" in result["utility"]["body"] and "{{date}}" in result["utility"]["body"]
+    assert "20%" not in result["utility"]["body"]
+    assert result["method"].startswith("llm-untangle")
+    assert result["split_off"] is not None
+
+
+@pytest.mark.parametrize("reply, why", [
+    ({"possible": True, "body": "Thanks for being a customer.", "header": "", "footer": "", "buttons": "",
+      "promotional": []}, "anchor"),
+    ({"possible": True, "body": "Your {{plan_name}} renewal is due. 20% off!", "header": "", "footer": "",
+      "buttons": "", "promotional": []}, "checklist"),
+    ({"possible": False, "reason": "Nothing transactional."}, "transactional"),
+])
+def test_an_unsafe_untangle_is_refused_not_accepted(baseline, monkeypatch, reply, why):
+    """A model-authored rewrite passes the same guards as a deletion."""
+    enable_llm(monkeypatch, reply)
+    result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.NEEDS_CONTEXT
+    assert result["utility"] is None
+
+
+CANDIDATES = {"candidates": [
+    {"header": "", "body": "Hi {{1}}, your {{plan_name}} renewal is due on {{date}}.", "footer": "", "buttons": ""},
+    {"header": "", "body": "Hi {{1}}, renewal of {{plan_name}} falls due {{date}}.", "footer": "", "buttons": ""},
+    {"header": "", "body": "Thanks for being with us.", "footer": "", "buttons": ""},
+    {"header": "", "body": "Hi {{1}}, your {{plan_name}} renewal is due {{date}}. 20% off!", "footer": "", "buttons": ""},
+], "promotional": ["20% off your renewal"], "reason": "separated"}
+
+
+def test_selection_picks_among_candidates_and_drops_unsafe_ones(baseline, monkeypatch):
+    """Several rewrites are proposed; the direction chooses between the safe ones."""
+    enable_llm(monkeypatch, CANDIDATES)
+    result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
+    assert result["method"].startswith("llm-select")
+    body = result["utility"]["body"]
+    assert "{{plan_name}}" in body and "{{date}}" in body and "20%" not in body
+    # Four proposed, two survive: one drops the anchor, one keeps the promotion.
+    assert result["selection"]["candidates"] == 4
+    assert result["selection"]["eligible"] == 2
+
+
+def test_selection_refuses_when_no_candidate_is_safe(baseline, monkeypatch):
+    enable_llm(monkeypatch, {"candidates": [
+        {"header": "", "body": "Thanks for being a customer.", "footer": "", "buttons": ""},
+        {"header": "", "body": "Your {{plan_name}} renewal. Buy now for 20% off!", "footer": "", "buttons": ""},
+    ], "promotional": []})
+    result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.NEEDS_CONTEXT
+    assert result["utility"] is None
+
+
+def test_selection_is_optional_when_no_direction_is_fitted(baseline, monkeypatch):
+    """Without the fitted direction the first safe candidate is taken, not an error."""
+    monkeypatch.setattr(compose, "_selector", (None, None))
+    enable_llm(monkeypatch, CANDIDATES)
+    result = compose.convert(TANGLED, baseline, relationship_confirmed=True)
+    assert result["method"].startswith("llm-select")
+    assert result["selection"]["moved"] is None
+    assert "{{plan_name}}" in result["utility"]["body"]
