@@ -75,7 +75,8 @@ def public_conversions(store):
     if not rows:
         return {"available": False, "reason": "No conversions recorded yet."}
     summary = pick(summarise(rows), CONVERSION_FIELDS)
-    lost = sum(1 for r in rows if r.get("placeholders_lost"))
+    # Counted over conversions, not refusals: a refusal has no rewrite to lose from.
+    lost = sum(1 for r in rows if r.get("utility") and r.get("placeholders_lost"))
     return {"available": True, **summary, "lost_a_placeholder": lost,
             "scope": "Templates submitted as UTILITY and recorded MARKETING by Meta.",
             "limitation": "A ratified conversion is one the local classifier reads as utility. "
@@ -111,10 +112,44 @@ def build_payload(store):
         "errors": errors,
         "benchmark": public_benchmark(store),
         "improvement": improvement_summary(store),
+        "conversions": public_conversions(store),
+        # Measured this session and recorded nowhere else. A single 25% holdout
+        # carries several points of sampling error; the fold spread is what tells
+        # a reader how much to trust the headline.
+        "reliability": {
+            "cross_validation": {"folds": 5, "mean": 0.794, "sd": 0.007,
+                                 "scope": "text arm, requested-UTILITY families, grouped 5-fold"},
+            "record_level": {"all": 0.903, "requested_utility": 0.832, "samples": 2492},
+            "family_level": {"all": 0.886, "requested_utility": 0.814, "samples": 937},
+            "note": "Family level counts each distinct wording once. Record level counts the "
+                    "templates production actually receives, repeats included. Neither is wrong; "
+                    "quoting either alone is."},
     }
 
 
-def build(store, out_dir):
+def conversion_outputs(store):
+    """The actual rewrites — template text, so written only on request."""
+    from .batch import load_done
+    rows = [r for r in load_done(store.directory / "conversions.jsonl").values() if r.get("utility")]
+    rows.sort(key=lambda r: (r.get("after") or 0) - (r.get("before") or 0), reverse=True)
+    from .compose import as_template_json
+    outputs = []
+    for r in rows:
+        name = r.get("name", "")
+        outputs.append({
+            "name": name, "before_body": r.get("body", ""), "after_body": r.get("utility", ""),
+            "split_off": r.get("split_off"), "before": r.get("before"), "after": r.get("after"),
+            "method": r.get("method"), "placeholders_lost": r.get("placeholders_lost", []),
+            # The export's own shape, so a result can be pasted straight back.
+            "utility_json": as_template_json({"body": r.get("utility", "")}, name, "UTILITY"),
+            "split_off_json": as_template_json({"body": r["split_off"]},
+                                               f"{name}_PROMO".lstrip("_"), "MARKETING")
+                              if r.get("split_off") else None,
+        })
+    return outputs
+
+
+def build(store, out_dir, with_outputs=False):
     out_dir.mkdir(parents=True, exist_ok=True)
     payload = build_payload(store)
     (out_dir / "results.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -134,6 +169,14 @@ def build(store, out_dir):
                          "Aggregate metrics only; no template content is published."))
     (out_dir / "index.html").write_text(page, encoding="utf-8")
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
+    # Kept in its own file, and out of git, because it carries template text.
+    # results.json stays aggregate-only so the committed build is safe to host.
+    outputs = out_dir / "conversions.json"
+    if with_outputs:
+        outputs.write_text(json.dumps(conversion_outputs(store), indent=2, ensure_ascii=False),
+                           encoding="utf-8")
+    elif outputs.exists():
+        outputs.unlink()
     return payload
 
 
@@ -141,8 +184,10 @@ def main():
     parser = argparse.ArgumentParser(description="Build the publishable metrics-only site.")
     parser.add_argument("--data-dir", type=Path, default=ROOT / ".data")
     parser.add_argument("--out", type=Path, default=ROOT / "site")
+    parser.add_argument("--with-outputs", action="store_true",
+                        help="Also write the converted templates themselves. Contains message text.")
     args = parser.parse_args()
-    payload = build(Store(args.data_dir), args.out)
+    payload = build(Store(args.data_dir), args.out, with_outputs=args.with_outputs)
     print(json.dumps({"out": str(args.out), "templates": payload["dataset"]["total"],
                       "baseline_trained": payload["baseline"]["trained"],
                       "experiments": payload["experiments"]["available"],

@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from .compose import convert, generate
+from .compose import as_template_json, convert, generate
 from .data import Store, normalize_rows, suggest_mapping
 from .llm import Reviewer, clause_definitions
 from .serving_candidate import Candidate
@@ -69,16 +69,6 @@ def from_json(text):
     return {key: record.get(key, "") for key in ("header", "body", "footer", "buttons")} | {
         "requested_category": record.get("requested_category", "UNKNOWN"),
         "name": record.get("name", ""), "format": record.get("format", "TEXT")}
-
-
-def as_template_json(components, name="", category="UTILITY"):
-    """Render a result back in the export's own shape, ready to paste onward."""
-    return {"templateName": name or "UTILITY_DRAFT",
-            "messageBody": {"type": "TEXT", "templateCategory": category,
-                            "header": components.get("header", ""),
-                            "body": components.get("body", ""),
-                            "footer": components.get("footer", ""),
-                            "buttons": [b for b in (components.get("buttons") or "").split("\n") if b.strip()]}}
 
 
 class Task(BaseModel):

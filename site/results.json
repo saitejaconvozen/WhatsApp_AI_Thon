@@ -1,5 +1,5 @@
 {
-  "loaded_at": "2026-09-18T14:51:51.656855+00:00",
+  "loaded_at": "2026-09-18T17:30:07.248171+00:00",
   "published": true,
   "dataset": {
     "total": 13525,
@@ -471,7 +471,100 @@
           }
         },
         "selected_epoch": 3
+      },
+      {
+        "name": "Requested-category experiment",
+        "complete": true,
+        "train": 2106,
+        "validation": 702,
+        "test": 937,
+        "test_evaluated": false,
+        "candidates": 72,
+        "selected_validation": {
+          "all": {
+            "samples": 702,
+            "accuracy": 0.8903133903133903,
+            "majority_accuracy": 0.7264957264957265,
+            "utility_precision": 0.7751196172248804,
+            "utility_recall": 0.84375,
+            "recorded_utility": 192
+          },
+          "requested_utility": {
+            "samples": 417,
+            "accuracy": 0.8177458033573142,
+            "majority_accuracy": 0.5419664268585132,
+            "utility_precision": 0.7751196172248804,
+            "utility_recall": 0.8481675392670157,
+            "recorded_utility": 191
+          }
+        },
+        "selected_epoch": null
+      },
+      {
+        "name": "Neural and text combination",
+        "complete": true,
+        "train": 2106,
+        "validation": 702,
+        "test": 937,
+        "test_evaluated": false,
+        "candidates": 35,
+        "selected_validation": {
+          "all": {
+            "samples": 702,
+            "accuracy": 0.8903133903133903,
+            "majority_accuracy": 0.7264957264957265,
+            "utility_precision": 0.7948717948717948,
+            "utility_recall": 0.8072916666666666,
+            "recorded_utility": 192
+          },
+          "requested_utility": {
+            "samples": 417,
+            "accuracy": 0.8177458033573142,
+            "majority_accuracy": 0.5419664268585132,
+            "utility_precision": 0.7948717948717948,
+            "utility_recall": 0.8115183246073299,
+            "recorded_utility": 191
+          }
+        },
+        "selected_epoch": null
       }
     ]
+  },
+  "conversions": {
+    "available": true,
+    "templates": 1180,
+    "verdicts": {
+      "NEEDS_CONTEXT": 665,
+      "ALREADY_UTILITY": 326,
+      "IRREDUCIBLY_MARKETING": 168,
+      "SPLIT_RECOMMENDED": 21
+    },
+    "produced_a_rewrite": 21,
+    "ratified_as_utility": 21,
+    "ratified_share": 0.0178,
+    "mean_score_gain": 0.4833,
+    "failures": 0,
+    "lost_a_placeholder": 1,
+    "scope": "Templates submitted as UTILITY and recorded MARKETING by Meta.",
+    "limitation": "A ratified conversion is one the local classifier reads as utility. No converted template has been submitted to Meta."
+  },
+  "reliability": {
+    "cross_validation": {
+      "folds": 5,
+      "mean": 0.794,
+      "sd": 0.007,
+      "scope": "text arm, requested-UTILITY families, grouped 5-fold"
+    },
+    "record_level": {
+      "all": 0.903,
+      "requested_utility": 0.832,
+      "samples": 2492
+    },
+    "family_level": {
+      "all": 0.886,
+      "requested_utility": 0.814,
+      "samples": 937
+    },
+    "note": "Family level counts each distinct wording once. Record level counts the templates production actually receives, repeats included. Neither is wrong; quoting either alone is."
   }
 }

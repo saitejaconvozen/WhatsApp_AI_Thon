@@ -33,3 +33,13 @@ def test_a_half_written_line_does_not_break_resume(tmp_path):
 
 def test_missing_file_resumes_from_nothing(tmp_path):
     assert load_done(tmp_path / "absent.jsonl") == {}
+
+
+def test_placeholder_loss_is_counted_over_conversions_not_refusals():
+    """A refusal has no rewrite, so every placeholder trivially looks lost."""
+    from templatelab import publish
+    rows = [{"id": "a", "verdict": "NEEDS_CONTEXT", "utility": None, "placeholders_lost": ["{{1}}", "{{2}}"]},
+            {"id": "b", "verdict": "SPLIT_RECOMMENDED", "utility": "x", "after_category": "UTILITY",
+             "placeholders_lost": ["{{3}}"]}]
+    counted = sum(1 for r in rows if r.get("utility") and r.get("placeholders_lost"))
+    assert counted == 1

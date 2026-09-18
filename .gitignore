@@ -10,3 +10,6 @@ artifacts/
 # Import them into .data/ instead; never commit them.
 *_templates.json
 prod_templates.json
+
+# Converted template text; results.json stays aggregate-only.
+site/conversions.json

@@ -32,6 +32,20 @@ IRREDUCIBLY_MARKETING = "IRREDUCIBLY_MARKETING"
 NEEDS_CONTEXT = "NEEDS_CONTEXT"
 
 
+def as_template_json(components, name="", category="UTILITY"):
+    """Render a result in the export's own shape, ready to paste onward.
+
+    Lives here rather than in the API so the batch pass can produce the same
+    structure without pulling in the web stack.
+    """
+    return {"templateName": name or "UTILITY_DRAFT",
+            "messageBody": {"type": "TEXT", "templateCategory": category,
+                            "header": components.get("header", ""),
+                            "body": components.get("body", ""),
+                            "footer": components.get("footer", ""),
+                            "buttons": [b for b in (components.get("buttons") or "").split("\n") if b.strip()]}}
+
+
 def components_of(record):
     return {key: str(record.get(key) or "") for key in COMPONENTS}
 

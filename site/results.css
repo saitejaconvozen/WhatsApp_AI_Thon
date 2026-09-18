@@ -113,3 +113,4 @@ dialog::backdrop { background:#12252066; }
 @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
 .timeline.ideas li > svg { color:var(--blue); }
 .timeline.ideas .pill { margin-left:6px; vertical-align:middle; }
+details.conversion{border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin:10px 0;background:#fff}details.conversion summary{cursor:pointer;font-size:13px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}details.conversion h4{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#63786f;margin:14px 0 6px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px}.pair pre.body-text,pre.body-text{white-space:pre-wrap;font:inherit;font-size:12.5px;line-height:1.55;background:#f6f9f7;border-radius:5px;padding:11px;margin:0;overflow-x:auto}pre.body-text.split{background:#fdf3e0}@media(max-width:760px){.pair{grid-template-columns:1fr}}

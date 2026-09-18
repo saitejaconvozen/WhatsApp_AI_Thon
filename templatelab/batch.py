@@ -91,10 +91,14 @@ def run(store, out, limit=None, workers=4, requested_utility_only=True):
                 "after_category": after.get("category"),
                 "utility": (d.get("utility") or {}).get("body"),
                 "split_off": (d.get("split_off") or {}).get("body"),
+                # Only meaningful when a rewrite exists. Computing it for a refusal
+                # marks every placeholder "lost" simply because there is no rewrite,
+                # which once reported 774 losses against 21 conversions.
                 "placeholders_lost": sorted(
                     set(PLACEHOLDER.findall(record.get("body", "")))
                     - set(PLACEHOLDER.findall((d.get("utility") or {}).get("body", "")))
-                    - set(PLACEHOLDER.findall((d.get("split_off") or {}).get("body", "")))),
+                    - set(PLACEHOLDER.findall((d.get("split_off") or {}).get("body", ""))))
+                if d.get("utility") else [],
             })
         with lock:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")

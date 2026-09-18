@@ -55,6 +55,7 @@ function render() {
     </section>
     <section id="conversion">${sectionHead('Converting marketing to utility', 'Every template the business submitted as utility and Meta recorded as marketing, run through the converter.', 'Batch result')}
       ${report.conversions?.available ? conversionHtml(report.conversions) : `<div class="empty">${escapeHtml(report.conversions?.reason || 'No batch conversion has been run.')}</div>`}
+      <div id="conversion-outputs"></div>
     </section>
     <section id="ideas">${sectionHead('What could be built next', 'Every direction identified for this project, with what has already been tried and what it would take.', 'Roadmap')}
       ${ideasHtml()}
@@ -84,6 +85,7 @@ function render() {
     $('#comparison-subset').onchange = event => { subset = event.target.value; renderComparison(); };
     renderComparison();
   }
+  loadOutputs();
   if (report.errors.available) {
     $('#error-direction').value = direction;
     $('#review-status').value = reviewStatus;
@@ -201,6 +203,30 @@ function reliabilityHtml(rel) {
     <div class="notice">${escapeHtml(rel.note)}</div>
     <dl class="facts"><div><dt>${cv.folds}-fold cross-validation (${escapeHtml(cv.scope)})</dt><dd>${pct(cv.mean)} &plusmn; ${(cv.sd * 100).toFixed(1)}pp</dd></div></dl>
     <p class="small">The fold spread is tight, so the plateau is a property of the data rather than of one unlucky split.</p>`;
+}
+
+async function loadOutputs() {
+  const host = $('#conversion-outputs');
+  if (!host) return;
+  let rows;
+  try {
+    const response = await fetch('conversions.json');
+    if (!response.ok) return;
+    rows = await response.json();
+  } catch (error) { return; }
+  if (!rows?.length) return;
+  host.innerHTML = `<h3 style="margin-top:32px">The converted templates</h3>
+    <p class="small">Every rewrite the classifier ratified, strongest movement first. This is real message text.</p>
+    ${rows.map((r, i) => `<details class="conversion"${i === 0 ? ' open' : ''}>
+      <summary><strong>${escapeHtml(r.name || 'Untitled')}</strong> <span class="pill green">${pct(r.before)} &rarr; ${pct(r.after)}</span>${r.placeholders_lost?.length ? ` <span class="pill amber">lost ${escapeHtml(r.placeholders_lost.join(', '))}</span>` : ''}</summary>
+      <div class="pair"><div><h4>Before &mdash; recorded MARKETING</h4><pre class="body-text">${escapeHtml(r.before_body)}</pre></div>
+      <div><h4>After &mdash; utility candidate</h4><pre class="body-text">${escapeHtml(r.after_body)}</pre></div></div>
+      ${r.split_off ? `<h4>Split off as a separate marketing template</h4><pre class="body-text split">${escapeHtml(r.split_off)}</pre>` : ''}
+      <h4>Utility template JSON</h4><pre class="json">${escapeHtml(JSON.stringify(r.utility_json, null, 2))}</pre>
+      ${r.split_off_json ? `<h4>Marketing template JSON</h4><pre class="json">${escapeHtml(JSON.stringify(r.split_off_json, null, 2))}</pre>` : ''}
+      <p class="small">${escapeHtml(r.method || '')}</p>
+    </details>`).join('')}`;
+  paintIcons();
 }
 
 function conversionHtml(c) {
