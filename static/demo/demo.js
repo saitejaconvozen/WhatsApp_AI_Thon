@@ -43,6 +43,23 @@ function templateCard(title, template) {
   return card;
 }
 
+function looksSpliced(body) {
+  const greeting = /\b(?:hi|hello|dear|hey)\b[\s,]/gi;
+  const found = [...body.matchAll(greeting)].map(m => m.index);
+  // A greeting well past the opening usually means a second template was pasted
+  // on top of the first. That once made a correct verdict look wrong.
+  return found.some(index => index > 60);
+}
+
+function checkSplice() {
+  const warning = document.querySelector('#splice-warning');
+  if (!warning) return;
+  const body = templateForm.body.value;
+  const spliced = looksSpliced(body);
+  warning.hidden = !spliced;
+  if (spliced) warning.textContent = 'This looks like two templates pasted together — there is a greeting partway through the body. Classify one template at a time, or the mixed content will be judged as one message.';
+}
+
 function setMode(next) {
   mode = next;
   document.querySelectorAll('[data-mode]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.mode === next)));
@@ -70,7 +87,12 @@ function setMode(next) {
 }
 
 document.querySelectorAll('[data-mode]').forEach(tab => { tab.onclick = () => setMode(tab.dataset.mode); });
-templateForm.onreset = () => result.replaceChildren(paragraph('Nothing checked yet.'));
+templateForm.onreset = () => {
+  result.replaceChildren(paragraph('Nothing checked yet.'));
+  const warning = document.querySelector('#splice-warning');
+  if (warning) warning.hidden = true;
+};
+templateForm.body.addEventListener('input', checkSplice);
 taskForm.onreset = () => draft.replaceChildren(paragraph('No draft yet.'));
 
 async function send(url, payload, target, button, busyLabel, render) {

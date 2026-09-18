@@ -25,11 +25,12 @@
         <form id="template-form">
           <label>Category submitted to Meta<select name="requested_category"><option value="UTILITY" selected>Utility</option><option value="MARKETING">Marketing</option><option value="UNKNOWN">Not specified</option></select></label>
           <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+          <p id="splice-warning" class="splice" hidden></p>
           <label>Body<textarea name="body" maxlength="6000" rows="7" required placeholder="Your invoice {{invoice_id}} is due on {{due_date}}."></textarea></label>
           <label>Footer<input name="footer" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
           <label>Buttons<textarea name="buttons" maxlength="1000" rows="2" placeholder="View invoice"></textarea></label>
           <label class="inline" id="relationship-field" hidden><input type="checkbox" name="relationship_confirmed"> This message follows a real transaction with the recipient</label>
-          <div class="actions"><button type="submit" id="submit-template"><i data-lucide="scan-text"></i><span>Classify template</span></button><button class="secondary" type="reset" title="Clear template" aria-label="Clear template"><i data-lucide="rotate-ccw"></i></button></div>
+          <div class="actions"><button type="submit" id="submit-template"><i data-lucide="scan-text"></i><span>Classify template</span></button><button class="secondary wide" type="reset" title="Clear template"><i data-lucide="rotate-ccw"></i><span>Clear</span></button></div>
         </form>
       </section>
       <section class="prediction"><h2 id="output-heading">Predicted Meta category</h2><div id="result" aria-live="polite"><p class="muted">No prediction yet.</p></div></section>
@@ -47,7 +48,7 @@
             <option value="appointment">Appointment</option><option value="support">Support</option>
             <option value="account">Account</option><option value="critical">Critical</option>
           </select></label>
-          <div class="actions"><button type="submit" id="submit-task"><i data-lucide="sparkles"></i><span>Draft a utility template</span></button><button class="secondary" type="reset" title="Clear task" aria-label="Clear task"><i data-lucide="rotate-ccw"></i></button></div>
+          <div class="actions"><button type="submit" id="submit-task"><i data-lucide="sparkles"></i><span>Draft a utility template</span></button><button class="secondary wide" type="reset" title="Clear task"><i data-lucide="rotate-ccw"></i><span>Clear</span></button></div>
         </form>
       </section>
       <section class="prediction"><h2>Draft</h2><div id="draft" aria-live="polite"><p class="muted">No draft yet.</p></div></section>
