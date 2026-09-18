@@ -65,6 +65,20 @@ def policy_version():
             "checked_on": checked.group(1) if checked else "unknown"}
 
 
+def clause_definitions():
+    """Map each policy clause id to its text, so a cited "M6" can be shown in full.
+
+    Parsed from the versioned definitions file rather than duplicated here: when
+    Meta's published guidance changes, policy/meta-categories.md is the only
+    place that should need editing.
+    """
+    definitions = {}
+    for match in re.finditer(r"^- ([UM]\d+)\.\s+(.+?)(?=\n- |\n\n|\Z)", policy_text(), re.M | re.S):
+        text = re.sub(r"\s+", " ", match.group(2)).replace("**", "").strip()
+        definitions[match.group(1)] = text
+    return definitions
+
+
 def configuration():
     backend = os.environ.get(BACKEND_VARIABLE, "disabled").strip().lower() or "disabled"
     model = os.environ.get(MODEL_VARIABLE, "").strip() or DEFAULT_MODELS.get(backend, DEFAULT_MODEL)

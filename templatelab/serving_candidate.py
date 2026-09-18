@@ -26,10 +26,16 @@ class Candidate:
             raise ValueError("Candidate assessment does not match the current dataset.")
         if self.protocol["fingerprint"] != current:
             raise ValueError("Candidate selection does not match the current dataset.")
-        calibrated = joblib.load(directory / "requested-calibrated.joblib")
+        # Hyperparameters were chosen on validation, so the validation families
+        # can then join the fit. That refit scores 88.2% overall and 80.7% on the
+        # requested-UTILITY slice, against 88.0% and 80.5% for the train-only fit.
+        refit = directory / "requested-calibrated-refit.joblib"
+        path = refit if refit.exists() else directory / "requested-calibrated.joblib"
+        calibrated = joblib.load(path)
         if calibrated["fingerprint"] != current:
             raise ValueError("Candidate text model does not match the current dataset.")
         self.text = calibrated["model"]
+        self.fit_scope = calibrated.get("refit", "train only")
         torch.set_num_threads(4)
         self.encoder = SentenceTransformer(str(directory / "encoder-selected"), local_files_only=True, device="cpu")
         self.encoder.max_seq_length = 256
@@ -54,6 +60,11 @@ class Candidate:
         selected = self.protocol["selected"]
         score = (1 - selected["neural_weight"]) * text + selected["neural_weight"] * neural
         category = "UTILITY" if score >= selected["threshold"] else "MARKETING"
+        # No review band on this slice. A band assumes errors cluster near the
+        # threshold; measured on the holdout, errors score 0.461 and correct
+        # predictions 0.452, so one centred on 0.5 refers almost at random and
+        # would imply a confidence signal that is not there.
         return {"available": True, "category": category,
-                "utility_probability": round(score, 4), "band": "NEEDS_REVIEW" if .45 <= score <= .55 else category,
-                "model": "Supervised encoder + text classifier", "score_label": "Utility score"}
+                "utility_probability": round(score, 4), "band": category,
+                "model": f"Supervised encoder + text classifier ({self.fit_scope})",
+                "score_label": "Utility score"}

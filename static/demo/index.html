@@ -12,19 +12,48 @@
 <body>
   <header><a class="brand" href="/"><i data-lucide="messages-square"></i>Template Lab</a><a href="/results/">Evaluation results <i data-lucide="arrow-up-right"></i></a></header>
   <main>
-    <div class="title"><div><p class="eyebrow">WHATSAPP / META CATEGORY</p><h1>Template classifier</h1></div><span class="status">Research model</span></div>
-    <div class="workspace">
-      <section><h2>Template</h2><form id="template-form">
-        <label>Category submitted to Meta<select name="requested_category"><option value="UTILITY" selected>Utility</option><option value="MARKETING">Marketing</option><option value="UNKNOWN">Not specified</option></select></label>
-        <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
-        <label>Body<textarea name="body" maxlength="6000" rows="7" required placeholder="Your invoice {{invoice_id}} is due on {{due_date}}."></textarea></label>
-        <label>Footer<input name="footer" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
-        <label>Buttons<textarea name="buttons" maxlength="1000" rows="2" placeholder="View invoice"></textarea></label>
-        <div class="actions"><button type="submit" id="classify"><i data-lucide="scan-text"></i><span>Classify template</span></button><button class="secondary" type="reset" title="Clear template" aria-label="Clear template"><i data-lucide="rotate-ccw"></i></button></div>
-      </form></section>
-      <section class="prediction"><h2>Predicted Meta category</h2><div id="result" aria-live="polite"><p class="muted">No prediction yet.</p></div></section>
+    <div class="title"><div><p class="eyebrow">WHATSAPP / META CATEGORY</p><h1>Template workbench</h1></div><span class="status">Research model</span></div>
+    <nav class="modes" role="tablist" aria-label="What do you want to do?">
+      <button role="tab" data-mode="classify" aria-selected="true"><i data-lucide="scan-text"></i>Classify</button>
+      <button role="tab" data-mode="convert" aria-selected="false"><i data-lucide="wand-sparkles"></i>Convert to utility</button>
+      <button role="tab" data-mode="generate" aria-selected="false"><i data-lucide="sparkles"></i>Generate</button>
+    </nav>
+
+    <div class="workspace" id="template-workspace">
+      <section>
+        <h2 id="input-heading">Template</h2>
+        <form id="template-form">
+          <label>Category submitted to Meta<select name="requested_category"><option value="UTILITY" selected>Utility</option><option value="MARKETING">Marketing</option><option value="UNKNOWN">Not specified</option></select></label>
+          <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+          <label>Body<textarea name="body" maxlength="6000" rows="7" required placeholder="Your invoice {{invoice_id}} is due on {{due_date}}."></textarea></label>
+          <label>Footer<input name="footer" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
+          <label>Buttons<textarea name="buttons" maxlength="1000" rows="2" placeholder="View invoice"></textarea></label>
+          <label class="inline" id="relationship-field" hidden><input type="checkbox" name="relationship_confirmed"> This message follows a real transaction with the recipient</label>
+          <div class="actions"><button type="submit" id="submit-template"><i data-lucide="scan-text"></i><span>Classify template</span></button><button class="secondary" type="reset" title="Clear template" aria-label="Clear template"><i data-lucide="rotate-ccw"></i></button></div>
+        </form>
+      </section>
+      <section class="prediction"><h2 id="output-heading">Predicted Meta category</h2><div id="result" aria-live="polite"><p class="muted">No prediction yet.</p></div></section>
     </div>
-    <footer>Text-only research model. Predictions are not Meta decisions. Inputs are not saved or sent to a hosted AI provider. Avoid personal or confidential information.</footer>
+
+    <div class="workspace" id="task-workspace" hidden>
+      <section>
+        <h2>What do you need to tell the customer?</h2>
+        <form id="task-form">
+          <label>Task<textarea name="task" maxlength="2000" rows="4" required placeholder="Tell the tenant their rent receipt is generated for this month"></textarea></label>
+          <label>Business context<textarea name="context" maxlength="4000" rows="3" placeholder="The transaction and facts to preserve. Optional."></textarea></label>
+          <label>Service event<select name="purpose">
+            <option value="" selected>Detect automatically</option>
+            <option value="billing">Billing</option><option value="order">Order</option>
+            <option value="appointment">Appointment</option><option value="support">Support</option>
+            <option value="account">Account</option><option value="critical">Critical</option>
+          </select></label>
+          <div class="actions"><button type="submit" id="submit-task"><i data-lucide="sparkles"></i><span>Draft a utility template</span></button><button class="secondary" type="reset" title="Clear task" aria-label="Clear task"><i data-lucide="rotate-ccw"></i></button></div>
+        </form>
+      </section>
+      <section class="prediction"><h2>Draft</h2><div id="draft" aria-live="polite"><p class="muted">No draft yet.</p></div></section>
+    </div>
+
+    <footer>Text-only research model. Predictions are not Meta decisions. Conversion and drafting send the text you enter to a configured AI provider; classification does not. Inputs are not saved. Avoid personal or confidential information.</footer>
   </main>
 </body>
 </html>
