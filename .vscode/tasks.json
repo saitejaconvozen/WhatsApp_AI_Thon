@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Codex: Resume this conversation",
+      "type": "process",
+      "command": "/usr/lib/chatgpt/resources/codex",
+      "args": ["resume", "01a0b369-34ab-7850-b4fc-b648a433b77b", "--cd", "${workspaceFolder}", "--model", "gpt-6-astra"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+    },
+    {
+      "label": "Template Lab: Start app",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["-m", "uvicorn", "templatelab.app:app", "--host", "127.0.0.1", "--port", "8765"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Template Lab: Run tests",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": ["-m", "pytest", "-q"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

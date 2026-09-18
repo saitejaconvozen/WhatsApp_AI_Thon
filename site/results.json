@@ -1,0 +1,362 @@
+{
+  "loaded_at": "2026-09-18T12:26:52.926991+00:00",
+  "published": true,
+  "dataset": {
+    "total": 4079,
+    "categories": {
+      "UTILITY": 1157,
+      "MARKETING": 2552,
+      "UNKNOWN": 351,
+      "AUTHENTICATION": 19
+    },
+    "requested_categories": {
+      "UTILITY": 2734,
+      "MARKETING": 1321,
+      "AUTHENTICATION": 24
+    },
+    "statuses": {
+      "IN_PROGRESS": 75,
+      "VERIFIED": 3621,
+      "PENDING": 137,
+      "FAILED": 132,
+      "REJECTED": 114
+    },
+    "formats": {
+      "TEXT": 2964,
+      "MEDIA": 790,
+      "OTP_TEMPLATES": 19,
+      "CAROUSEL": 205,
+      "REPLY": 46,
+      "CALL_PERMISSION": 45,
+      "LIST": 9,
+      "LIMITED_TIME_OFFER": 1
+    },
+    "languages": {
+      "ENGLISH_US": 4079
+    },
+    "category_mismatches": 1333,
+    "families": 3024,
+    "duplicate_records": 1055,
+    "conflicting_families": 75,
+    "conflicting_records": 217,
+    "candidate_records": 2523,
+    "training_families": 1923,
+    "training_categories": {
+      "MARKETING": 1251,
+      "UTILITY": 672
+    },
+    "missing_bodies": 0
+  },
+  "baseline": {
+    "trained": true,
+    "training": false,
+    "stale": false,
+    "report": {
+      "trained_at": "2026-09-18T11:15:55.689775+00:00",
+      "method": "TF-IDF + logistic regression",
+      "split": "25% grouped holdout; one representative per normalized body family",
+      "train_families": 1442,
+      "test_families": 481,
+      "total_families": 1923,
+      "excluded_conflicting_families": 75,
+      "accuracy": 0.7983367983367984,
+      "majority_accuracy": 0.6195426195426196,
+      "macro_f1": 0.7772478360713655,
+      "labels": [
+        "MARKETING",
+        "UTILITY"
+      ],
+      "confusion_matrix": [
+        [
+          266,
+          32
+        ],
+        [
+          65,
+          118
+        ]
+      ],
+      "per_class": {
+        "MARKETING": {
+          "precision": 0.8036253776435045,
+          "recall": 0.8926174496644296,
+          "f1": 0.8457869634340223,
+          "support": 298
+        },
+        "UTILITY": {
+          "precision": 0.7866666666666666,
+          "recall": 0.644808743169399,
+          "f1": 0.7087087087087087,
+          "support": 183
+        }
+      },
+      "predicted_utility_count": 150,
+      "group_overlap": 0,
+      "limitations": [
+        "The platform owner confirmed on 2026-09-18 that metaTemplateCategory is Meta's final category and VERIFIED means successful Meta verification. No independent Meta API check was performed.",
+        "Meta never upgraded a requested MARKETING template to UTILITY in this export, so the requested-UTILITY slice is the only one carrying a real decision.",
+        "Grouping covers header, body, footer and buttons, but may still miss paraphrased duplicates.",
+        "This is a random grouped holdout, not a future-time or external validation set.",
+        "Only TEXT records are used. Images, carousels and other rich formats are excluded.",
+        "Thresholds come from a validation slice of the training data. Probabilities are calibrated against recorded labels, not Meta approval odds.",
+        "After evaluation, the serving model is refitted on all eligible families."
+      ],
+      "feature_version": 2,
+      "thresholds": {
+        "utility": 0.573,
+        "marketing": 0.44399999999999995,
+        "target_utility_precision": 0.85
+      },
+      "slices": {
+        "all": {
+          "samples": 481,
+          "accuracy": 0.7983367983367984,
+          "majority_accuracy": 0.6195426195426196,
+          "utility_precision": 0.7866666666666666,
+          "utility_recall": 0.644808743169399,
+          "recorded_utility": 183
+        },
+        "requested_utility": {
+          "samples": 365,
+          "accuracy": 0.7397260273972602,
+          "majority_accuracy": 0.5013698630136987,
+          "utility_precision": 0.7972972972972973,
+          "utility_recall": 0.644808743169399,
+          "recorded_utility": 183
+        },
+        "requested_marketing": {
+          "samples": 116,
+          "accuracy": 0.9827586206896551,
+          "majority_accuracy": 1.0,
+          "utility_precision": 0.0,
+          "utility_recall": null,
+          "recorded_utility": 0
+        }
+      },
+      "bands": {
+        "coverage": 0.8627858627858628,
+        "decided": 415,
+        "referred": 66,
+        "accuracy_when_decided": 0.8433734939759037,
+        "utility_precision_when_decided": 0.8392857142857143
+      }
+    }
+  },
+  "experiments": {
+    "available": true,
+    "running": false,
+    "stale": false,
+    "report": {
+      "generated_at": "2026-09-18T11:16:21.985350+00:00",
+      "split": {
+        "cutoff": "2026-08-13T15:52:32.647000+00:00",
+        "train_families": 1421,
+        "test_families": 481,
+        "excluded_invalid_date_families": 0,
+        "purged_boundary_families": 21,
+        "group_overlap": 0
+      },
+      "majority_accuracy": 0.42203742203742206,
+      "results": [
+        {
+          "method": "Word TF-IDF",
+          "dimensions": null,
+          "all": {
+            "accuracy": 0.7027027027027027,
+            "macro_f1": 0.6954954954954955,
+            "confusion_matrix": [
+              [
+                132,
+                71
+              ],
+              [
+                72,
+                206
+              ]
+            ],
+            "utility_precision": 0.7436823104693141,
+            "utility_recall": 0.7410071942446043,
+            "utility_support": 278,
+            "predicted_utility": 277,
+            "samples": 481
+          },
+          "lower_overlap": {
+            "accuracy": 0.6964285714285714,
+            "macro_f1": 0.6901041666666667,
+            "confusion_matrix": [
+              [
+                124,
+                69
+              ],
+              [
+                67,
+                188
+              ]
+            ],
+            "utility_precision": 0.7315175097276264,
+            "utility_recall": 0.7372549019607844,
+            "utility_support": 255,
+            "predicted_utility": 257,
+            "samples": 448
+          }
+        },
+        {
+          "method": "Character TF-IDF",
+          "dimensions": null,
+          "all": {
+            "accuracy": 0.7193347193347194,
+            "macro_f1": 0.7125307125307125,
+            "confusion_matrix": [
+              [
+                136,
+                67
+              ],
+              [
+                68,
+                210
+              ]
+            ],
+            "utility_precision": 0.7581227436823105,
+            "utility_recall": 0.7553956834532374,
+            "utility_support": 278,
+            "predicted_utility": 277,
+            "samples": 481
+          },
+          "lower_overlap": {
+            "accuracy": 0.7120535714285714,
+            "macro_f1": 0.7073155908941278,
+            "confusion_matrix": [
+              [
+                131,
+                62
+              ],
+              [
+                67,
+                188
+              ]
+            ],
+            "utility_precision": 0.752,
+            "utility_recall": 0.7372549019607844,
+            "utility_support": 255,
+            "predicted_utility": 250,
+            "samples": 448
+          }
+        },
+        {
+          "method": "Latent semantic (LSA)",
+          "dimensions": 100,
+          "all": {
+            "accuracy": 0.6860706860706861,
+            "macro_f1": 0.6579124610841336,
+            "confusion_matrix": [
+              [
+                96,
+                107
+              ],
+              [
+                44,
+                234
+              ]
+            ],
+            "utility_precision": 0.6862170087976539,
+            "utility_recall": 0.841726618705036,
+            "utility_support": 278,
+            "predicted_utility": 341,
+            "samples": 481
+          },
+          "lower_overlap": {
+            "accuracy": 0.6852678571428571,
+            "macro_f1": 0.6586970969153713,
+            "confusion_matrix": [
+              [
+                91,
+                102
+              ],
+              [
+                39,
+                216
+              ]
+            ],
+            "utility_precision": 0.6792452830188679,
+            "utility_recall": 0.8470588235294118,
+            "utility_support": 255,
+            "predicted_utility": 318,
+            "samples": 448
+          }
+        },
+        {
+          "method": "Word TF-IDF + structure",
+          "dimensions": null,
+          "all": {
+            "accuracy": 0.6632016632016632,
+            "macro_f1": 0.6501221308236647,
+            "confusion_matrix": [
+              [
+                113,
+                90
+              ],
+              [
+                72,
+                206
+              ]
+            ],
+            "utility_precision": 0.6959459459459459,
+            "utility_recall": 0.7410071942446043,
+            "utility_support": 278,
+            "predicted_utility": 296,
+            "samples": 481
+          },
+          "lower_overlap": {
+            "accuracy": 0.6607142857142857,
+            "macro_f1": 0.6483516483516484,
+            "confusion_matrix": [
+              [
+                106,
+                87
+              ],
+              [
+                65,
+                190
+              ]
+            ],
+            "utility_precision": 0.6859205776173285,
+            "utility_recall": 0.7450980392156863,
+            "utility_support": 255,
+            "predicted_utility": 277,
+            "samples": 448
+          }
+        }
+      ],
+      "limitations": [
+        "Dates are template creation/update proxies, not Meta decision timestamps. Historical label availability cannot be established from this snapshot.",
+        "The cutoff is the 75th percentile of family first dates. Families spanning the cutoff are purged, including later updates.",
+        "Lower-overlap scores exclude test bodies with cosine similarity >= 0.90 to a training body; this threshold was fixed before evaluation, not tuned on labels.",
+        "Lexical overlap screening does not detect every paraphrase. Lower-overlap results are not an independent final test set.",
+        "LSA is a local low-rank text representation, not pretrained neural sentence embeddings or an LLM.",
+        "Comparisons are exploratory. No winner is promoted and no automatic submissions are enabled."
+      ],
+      "skipped": [
+        {
+          "method": "Sentence embeddings",
+          "reason": "sentence-transformers is not installed. Install it to run the neural comparison; the encoder downloads once and then runs locally."
+        }
+      ],
+      "near_duplicates": {
+        "method": "Training-fitted character TF-IDF cosine on normalized bodies",
+        "threshold": 0.9,
+        "flagged_test_families": 33
+      }
+    }
+  },
+  "errors": {
+    "available": false,
+    "reason": "Error examples are excluded from the published build because they contain template text. Review them in the local workspace.",
+    "items": [],
+    "counts": {
+      "total": 97,
+      "false_utility": 32,
+      "false_marketing": 65,
+      "reviewed": 0
+    }
+  }
+}

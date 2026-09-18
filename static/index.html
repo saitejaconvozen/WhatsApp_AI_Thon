@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Template Lab</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/vendor/lucide.min.js" defer></script>
+  <script src="/static/development.js" defer></script>
+  <script src="/static/errors.js" defer></script>
+  <script src="/static/compose.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#dataset"><span class="brand-icon"><i data-lucide="messages-square"></i></span><span>Template Lab<small>WhatsApp workspace</small></span></a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav aria-label="Main navigation">
+        <a href="#development" data-nav="development"><i data-lucide="git-branch"></i><span>Development</span></a>
+        <a href="#dataset" data-nav="dataset"><i data-lucide="database"></i><span>Dataset</span><span class="nav-count" id="nav-count">0</span></a>
+        <a href="#compose" data-nav="compose"><i data-lucide="wand-sparkles"></i><span>Compose</span></a>
+        <a href="#review" data-nav="review"><i data-lucide="scan-text"></i><span>Template review</span></a>
+        <a href="#model" data-nav="model"><i data-lucide="chart-no-axes-combined"></i><span>Model lab</span></a>
+        <a href="#errors" data-nav="errors"><i data-lucide="clipboard-check"></i><span>Error review</span></a>
+        <a href="#experiments" data-nav="experiments"><i data-lucide="flask-conical"></i><span>Experiments</span></a>
+      </nav>
+      <div class="sidebar-bottom"><span class="connection-dot"></span><span>Local workspace<small>No external services connected</small></span></div>
+    </aside>
+    <main>
+      <header class="topbar"><div><span class="breadcrumb">WhatsApp_AIThon</span><span class="slash">/</span><span id="breadcrumb-page">Dataset</span></div><span class="environment"><i data-lucide="hard-drive"></i> On this computer</span></header>
+      <div id="app" aria-live="polite"></div>
+    </main>
+  </div>
+  <dialog id="import-dialog" aria-labelledby="import-title">
+    <div class="dialog-heading"><h2 id="import-title">Import templates</h2><button class="icon-button" id="close-import" aria-label="Close import" title="Close"><i data-lucide="x"></i></button></div>
+    <div id="import-content"></div>
+  </dialog>
+  <dialog id="record-dialog" aria-labelledby="record-title">
+    <div class="dialog-heading"><h2 id="record-title">Template details</h2><button class="icon-button" id="close-record" aria-label="Close details" title="Close"><i data-lucide="x"></i></button></div>
+    <div id="record-content"></div>
+  </dialog>
+  <div id="toast" role="status" hidden></div>
+</body>
+</html>
