@@ -46,6 +46,15 @@ def test_clean_template_needs_no_conversion(baseline):
     assert result["utility"] is None
 
 
+def test_meta_downgrade_cannot_be_called_already_utility(baseline):
+    record = {**CLEAN, "requested_category": "UTILITY", "meta_category": "MARKETING"}
+    result = compose.convert(record, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.NEEDS_CONTEXT
+    assert result["disputed_by_meta"] is True
+    assert result["utility"] is None
+    assert "Meta recorded" in result["reason"]
+
+
 def test_purely_promotional_template_is_refused_not_laundered(baseline):
     result = compose.convert(PURE_PROMO, baseline)
     assert result["verdict"] == compose.IRREDUCIBLY_MARKETING

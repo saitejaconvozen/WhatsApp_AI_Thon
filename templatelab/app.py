@@ -44,7 +44,8 @@ class ReviewRequest(BaseModel):
 
 
 class ConvertRequest(ReviewRequest):
-    pass
+    requested_category: str = "UNKNOWN"
+    meta_category: str = "UNKNOWN"
 
 
 class GenerateRequest(BaseModel):

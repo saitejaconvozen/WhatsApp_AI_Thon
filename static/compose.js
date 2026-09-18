@@ -1,6 +1,7 @@
 const composeState = {
   mode: 'inspect',
-  draft: { name: '', header: '', body: '', footer: '', buttons: '' },
+  draft: { name: '', header: '', body: '', footer: '', buttons: '',
+           requested_category: 'UNKNOWN', meta_category: 'UNKNOWN' },
   task: '',
   context: '',
   purpose: '',
@@ -80,6 +81,12 @@ function inspectPanel() {
       ${composeField('body', 'Body', 'Your order {{order_id}} has shipped.', 5)}
       ${composeField('footer', 'Footer', 'Optional')}
       ${composeField('buttons', 'Buttons', 'One per line', 2)}
+      <label class="field"><span>Category submitted to Meta</span><select id="compose-requested-category">
+        ${['UNKNOWN', 'UTILITY', 'MARKETING'].map(c => `<option value="${c}" ${composeState.draft.requested_category === c ? 'selected' : ''}>${c === 'UNKNOWN' ? 'Not specified' : c}</option>`).join('')}
+      </select></label>
+      <label class="field"><span>Category recorded by Meta</span><select id="compose-meta-category">
+        ${['UNKNOWN', 'MARKETING', 'UTILITY', 'AUTHENTICATION'].map(c => `<option value="${c}" ${composeState.draft.meta_category === c ? 'selected' : ''}>${c === 'UNKNOWN' ? 'Not decided / unknown' : c}</option>`).join('')}
+      </select></label>
       <label class="check"><input type="checkbox" id="compose-relationship" ${composeState.relationship ? 'checked' : ''}>Confirmed actual transaction or requested service for this recipient</label>
       <button class="button primary" id="compose-check" ${composeState.busy ? 'disabled' : ''}>${icon('scan-text')}${composeState.busy ? 'Checking...' : 'Check this template'}</button>
     </section>
@@ -143,12 +150,24 @@ function readComposeFields() {
     const element = $(`#compose-${key}`);
     if (element) composeState.draft[key] = element.value;
   });
+  composeState.draft.requested_category = $('#compose-requested-category')?.value || 'UNKNOWN';
+  composeState.draft.meta_category = $('#compose-meta-category')?.value || 'UNKNOWN';
 }
 
 function wireCompose() {
   ['header', 'body', 'footer', 'buttons'].forEach(key => {
     const field = $(`#compose-${key}`);
-    if (field) field.oninput = () => { composeState.draft[key] = field.value; };
+    if (field) field.oninput = () => {
+      composeState.draft[key] = field.value;
+      // The saved Meta ruling belongs to the uploaded wording, not a new edit.
+      composeState.draft.meta_category = 'UNKNOWN';
+      const category = $('#compose-meta-category');
+      if (category) category.value = 'UNKNOWN';
+    };
+  });
+  ['requested', 'meta'].forEach(key => {
+    const field = $(`#compose-${key}-category`);
+    if (field) field.onchange = () => { composeState.draft[`${key}_category`] = field.value; };
   });
   const relationship = $('#compose-relationship');
   if (relationship) relationship.onchange = () => { composeState.relationship = relationship.checked; };
@@ -169,7 +188,9 @@ function wireCompose() {
     form.append('file', file.files[0]);
     try {
       const extracted = await api('/api/extract', { method: 'POST', body: form });
-      composeState.draft = { ...composeState.draft, ...extracted.template, format: extracted.format };
+      composeState.draft = { ...composeState.draft, ...extracted.template,
+        requested_category: extracted.requested_category,
+        meta_category: extracted.meta_category, format: extracted.format };
       composeState.relationship = false;
       composeState.source = `${file.files[0].name} — first of ${num(extracted.records_in_file)} record(s)`;
       composeState.result = null;
@@ -194,7 +215,8 @@ function wireCompose() {
 
   const accept = $('#compose-accept');
   if (accept) accept.onclick = () => {
-    composeState.draft = { ...composeState.draft, ...composeState.result.utility };
+    composeState.draft = { ...composeState.draft, ...composeState.result.utility,
+      requested_category: 'UTILITY', meta_category: 'UNKNOWN' };
     composeState.result = null;
     renderComposePanel();
     toast('Utility version applied. Check it again to confirm the score.');

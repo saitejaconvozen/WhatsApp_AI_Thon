@@ -395,6 +395,8 @@ def restate(components, baseline, purpose, before):
 def convert(record, baseline, purpose=None, relationship_confirmed=False):
     """Decide whether a template can become UTILITY, and produce it if so."""
     components = components_of(record)
+    known_downgrade = (record.get("requested_category") == "UTILITY"
+                       and record.get("meta_category") == "MARKETING")
     chosen_purpose = purpose
     purpose = purpose or detect_purpose(components["body"])
     checklist = assess({**components, "purpose": purpose,
@@ -416,7 +418,9 @@ def convert(record, baseline, purpose=None, relationship_confirmed=False):
         """
         if not has_anchor(components):
             return fallback
-        if not (before.get("available") and before.get("category") == "MARKETING"):
+        if not relationship_confirmed:
+            return fallback
+        if not (known_downgrade or (before.get("available") and before.get("category") == "MARKETING")):
             return fallback
         try:
             candidate, removed, after, method = restate(components, baseline, purpose, before)
@@ -440,6 +444,11 @@ def convert(record, baseline, purpose=None, relationship_confirmed=False):
         return try_restate(needs_context(checklist["summary"]))
 
     if not findings and checklist["category"] == "UTILITY_CANDIDATE":
+        if known_downgrade:
+            return try_restate({**needs_context(
+                "Meta recorded this submitted-Utility template as Marketing. No checklist or local-model "
+                "prediction can override that outcome; a revised draft needs human review and a new Meta decision."),
+                "disputed_by_meta": True})
         # The checklist only looks for promotional wording; it cannot tell a reply
         # to a support case from a request to call about property search, which
         # matches the same vocabulary while being lead generation. The model can,
@@ -705,7 +714,13 @@ VARIANTS = {
     "8421337": ["8421337", "5530912", "7104468"],
     "12 October": ["12 October", "18 October", "3 November"],
     "Rahul": ["Rahul", "Priya", "Arjun"],
+    "3:30 PM": ["3:30 PM", "11:00 AM", "6:15 PM"],
+    "Indiranagar, Bengaluru": ["Indiranagar, Bengaluru", "Kondapur, Hyderabad", "Powai, Mumbai"],
+    "98••••3210": ["98••••3210", "97••••4417", "90••••1268"],
 }
+# A template that already prints the symbol, as "₹{{Amount}}" does, must not get
+# a second one from the sample value.
+CURRENCY_BEFORE = re.compile(r"(?:₹|\bRs\.?)\s*$", re.I)
 
 
 def fill_by_rule(text):
@@ -713,11 +728,15 @@ def fill_by_rule(text):
 
     def replace(match):
         # The tail of the preceding text is what hints at the value's type.
-        base = sample_for(match.group(0)[2:-2], text[max(0, match.start() - 28):match.start()])
+        before = text[max(0, match.start() - 28):match.start()]
+        base = sample_for(match.group(0)[2:-2], before)
         options = VARIANTS.get(base, [base])
         index = used.get(base, 0)
         used[base] = index + 1
-        return options[index % len(options)]
+        value = options[index % len(options)]
+        if CURRENCY_BEFORE.search(before):
+            value = value.lstrip("₹")
+        return value
 
     return PLACEHOLDER.sub(replace, text)
 

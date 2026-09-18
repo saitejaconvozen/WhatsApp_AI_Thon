@@ -33,6 +33,17 @@ def test_upload_validation_and_unknown_record(client):
     assert client.post('/api/review', json={"body": "  "}).status_code == 400
 
 
+def test_local_conversion_respects_known_meta_downgrade(client, monkeypatch):
+    monkeypatch.setenv("TEMPLATELAB_LLM_BACKEND", "disabled")
+    result = client.post('/api/convert', json={
+        "body": "Your invoice {{id}} is ready.",
+        "requested_category": "UTILITY", "meta_category": "MARKETING",
+        "relationship_confirmed": True}).json()
+    assert result["verdict"] == "NEEDS_CONTEXT"
+    assert result["disputed_by_meta"] is True
+    assert result["utility"] is None
+
+
 def test_cross_origin_writes_are_rejected(client):
     assert client.post('/api/model/train', json={}, headers={"Origin": "https://outside.example"}).status_code == 403
 

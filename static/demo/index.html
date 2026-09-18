@@ -25,6 +25,7 @@
           <label class="toggle" id="json-toggle" hidden><input type="checkbox" id="json-mode"> Paste JSON instead</label></div>
         <form id="template-form">
           <label>Category submitted to Meta<select name="requested_category"><option value="UTILITY" selected>Utility</option><option value="MARKETING">Marketing</option><option value="UNKNOWN">Not specified</option></select></label>
+          <label id="meta-category-field" hidden>Category recorded by Meta<select name="meta_category"><option value="UNKNOWN" selected>Not decided / unknown</option><option value="MARKETING">Marketing</option><option value="UTILITY">Utility</option><option value="AUTHENTICATION">Authentication</option></select></label>
           <label>Header<input name="header" maxlength="1000" autocomplete="off" placeholder="Optional"></label>
           <label id="json-field" hidden>Template JSON<textarea name="template_json" rows="8" maxlength="20000" placeholder='Paste the full template record, e.g. {"templateName": "...", "messageBody": {"body": "..."}}'></textarea></label>
           <p id="splice-warning" class="splice" hidden></p>

@@ -24,6 +24,19 @@ PROMOTIONS = [
                      r"|explore our|new collection|special (?:offer|price|deal)|best (?:price|deal|rate)s?"
                      r"|lowest price|for free|free trial|no cost|zero cost|guaranteed)\b",
      "This wording suggests a purchase or re-engagement objective."),
+    # Added after a regenerated draft kept "Locking in this tenant requires an
+    # active Owner Plan" and another turned a chase for an advertising lead into
+    # "we tried calling you about your request". Both passed every other gate.
+    # These fire on 0 of the 1,036 approved templates, so the precision cost is
+    # nil; the point is not the 3 originals they catch but the drafts they stop,
+    # since laundering a promotion is exactly what rewriting tends to produce.
+    ("gated_by_plan", r"(?:requires? (?:an? )?active [\w ]{0,20}\bplan\b|with an active [\w ]{0,20}\bplan\b"
+                      r"|\bplan (?:is )?required\b|subscribe to (?:access|unlock|continue)"
+                      r"|upgrade (?:to|your) [\w ]{0,20}\bplan\b|only (?:for|with) [\w ]{0,15}\bmembers?\b)",
+     "The message gates a service behind a paid plan, which promotes a purchase."),
+    ("lead_followup", r"(?:the (?:form|enquiry) you (?:filled|submitted)|regarding the ad\b"
+                      r"|interested in our (?:services?|products?|offerings?))",
+     "The message follows up an advertising lead rather than an existing transaction."),
 ]
 AUTH = re.compile(r"\b(?:one.time (?:password|code)|verification code|your otp|authentication code)\b", re.I)
 REFERENCE = re.compile(r"\{\{[^}]+\}\}|\b\d{2,}\b", re.I)
@@ -32,7 +45,16 @@ TRANSACTION = re.compile(r"\b(?:invoice|bill(?:ing)?|payment|paid|refund|receipt
                          r"agreement|contract|rent|tenant|landlord|owner|property|visit|inspection|"
                          r"packer|mover|service|request|application|registration|verification|kyc|"
                          r"biometric|document|reference|due|overdue|amount|balance|schedule[d]?|"
-                         r"reschedule[d]?|assigned|renewal|expir(?:y|es|ed|ing))\b", re.I)
+                         r"reschedule[d]?|assigned|renewal|expir(?:y|es|ed|ing)|"
+                         # Lending vocabulary, absent until it was measured: these
+                         # templates say "Loan A/c" and "EMI", never "account" or
+                         # "payment". Without them the gate passed 1 of the 39
+                         # Meta-approved templates written in Indic script, which
+                         # carry English lending terms inside Kannada or Hindi
+                         # prose. Coverage on approved templates rises 69.3% to
+                         # 72.8% and separation 21.2pp to 22.5pp, so this is not
+                         # recall bought with precision.
+                         r"loan|emi|instal?lment|statement|repayment)\b", re.I)
 """Generic e-commerce vocabulary matched only 34% of this corpus's genuine UTILITY
 templates, so two thirds of legitimate drafts were refused as having no transaction
 to preserve. Paired with REFERENCE this keeps comparable separation (17.7pp against

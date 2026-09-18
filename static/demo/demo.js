@@ -114,6 +114,7 @@ function setMode(next) {
       glyph.replaceWith(placeholder);
     }
     relationshipField.hidden = next !== 'convert';
+    document.querySelector('#meta-category-field').hidden = next !== 'convert';
     document.querySelector('#json-toggle').hidden = next !== 'convert';
     if (next !== 'convert') {
       const box = document.querySelector('#json-mode');
@@ -208,7 +209,7 @@ async function explain(payload) {
 
 function renderConversion(data) {
   const nodes = [element('p', { className: 'category', textContent: (data.verdict || '').replace(/_/g, ' ') })];
-  if (data.disputed_by_model) {
+  if (data.disputed_by_meta || data.disputed_by_model) {
     nodes.push(element('p', { className: 'disagree', textContent: data.reason }));
   } else if (data.reason) {
     nodes.push(paragraph(data.reason, 'notice'));
