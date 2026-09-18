@@ -4,10 +4,26 @@ import re
 POLICY_URL = "https://whatsappbusiness.com/products/platform-pricing/"
 POLICY_DATE = "2026-09-18"
 PROMOTIONS = [
-    ("discount", r"\b(?:discounts?|cashback|coupon|promo code|\d+\s*%\s*off)\b", "A discount or incentive promotes a purchase."),
-    ("upsell", r"\b(?:upgrade|upsell|cross.sell|premium plan|unlock (?:more|benefits|exclusive))\b", "The message encourages an additional purchase or upgrade."),
-    ("sales_cta", r"\b(?:buy now|shop now|book now|claim (?:your|the) offer|limited.time offer|exclusive offer|sale ends|refer (?:a|your) friend)\b", "The call to action promotes a purchase or offer."),
-    ("reengagement", r"\b(?:abandoned cart|left (?:something|items) in your cart|we miss you|renew now|renew your|explore our|new collection)\b", "This wording suggests a purchase or re-engagement objective."),
+    # Mined from the corpus, intent markers only. Topic nouns (homes, owners,
+    # amenities) are deliberately excluded: deciding what a template is *about*
+    # is the classifier's job, and putting them here would fire on legitimate
+    # property service updates. Recall on real marketing rises from 8.5% to
+    # 22.7% while false fires on utility stay near 1%.
+    ("discount", r"(?:discounts?|cashback|coupon|promo\s*code|\d+\s*%\s*(?:off|discount)"
+                 r"|\bflat\s*[*_~]*\s*(?:₹|rs\.?)\s*[\d,]+|[*_~]*\s*(?:₹|rs\.?)\s*[\d,]+\s*[*_~]*\s*off\b"
+                 r"|\bat just\b|\bstarting (?:at|from) (?:just|only)\b|\bupto\b|\bup to\s+\d+\s*%)",
+     "A discount or incentive promotes a purchase."),
+    ("upsell", r"\b(?:upgrade|upsell|cross.sell|premium plan|unlock (?:more|benefits|exclusive)|add.on)\b",
+     "The message encourages an additional purchase or upgrade."),
+    ("sales_cta", r"\b(?:buy now|shop now|book now|order now|call now|apply now|claim (?:your|the|now)"
+                  r"|grab (?:it|yours|now)|limited.time|exclusive offer|sale ends|hurry|last chance"
+                  r"|don'?t miss|miss out|know more|learn more|explore (?:our|more)|check it out"
+                  r"|sign up now|register now|enrol now|avail )",
+     "The call to action promotes a purchase or offer."),
+    ("reengagement", r"\b(?:abandoned cart|left (?:something|items) in your cart|we miss you|renew now"
+                     r"|explore our|new collection|special (?:offer|price|deal)|best (?:price|deal|rate)s?"
+                     r"|lowest price|for free|free trial|no cost|zero cost|guaranteed)\b",
+     "This wording suggests a purchase or re-engagement objective."),
 ]
 AUTH = re.compile(r"\b(?:one.time (?:password|code)|verification code|your otp|authentication code)\b", re.I)
 REFERENCE = re.compile(r"\{\{[^}]+\}\}|\b\d{2,}\b", re.I)

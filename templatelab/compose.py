@@ -442,6 +442,18 @@ def convert(record, baseline, purpose=None, relationship_confirmed=False):
     if rechecked["category"] != "UTILITY_CANDIDATE":
         return needs_context("The edited draft did not pass the independent utility checklist.")
     after = score({**record, **kept}, baseline)
+    # The classifier ratifies the edit. A checklist can only see wording it has
+    # vocabulary for, and it missed 92% of real marketing — which let a home loan
+    # advertisement through as a "utility version" once one line was deleted.
+    # The model is the only component that judges the template as a whole, so a
+    # rewrite it still reads as marketing is not a conversion.
+    if after.get("available") and after.get("category") != "UTILITY":
+        return {**needs_context(
+            "The edit removed the promotional wording the checklist could see, but the trained "
+            "model still reads the result as marketing. Removing phrases did not change what "
+            "this template is."), "before": before, "after": after,
+            "removed": removed, "method": method, "selection": selection}
+
     promotional = [r["text"] for r in removed if r.get("text")]
     split_off = ({"body": " ".join(promotional)[:1000],
                   "note": "Send this as a separate MARKETING template to an opted-in audience."}

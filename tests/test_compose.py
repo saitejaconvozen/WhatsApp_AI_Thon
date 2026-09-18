@@ -330,3 +330,46 @@ def test_selection_is_optional_when_no_direction_is_fitted(baseline, monkeypatch
     assert result["method"].startswith("llm-select")
     assert result["selection"]["moved"] is None
     assert "{{plan_name}}" in result["utility"]["body"]
+
+
+def test_the_model_must_ratify_the_edit(baseline, monkeypatch):
+    """A checklist sees only wording it has vocabulary for.
+
+    Deleting one recognised phrase from an advertisement once produced a
+    "utility version" that was still the advertisement. The model judges the
+    whole template, so its verdict is the gate.
+    """
+    class StillMarketing:
+        def predict(self, record):
+            return {"available": True, "category": "MARKETING", "utility_probability": .30, "band": "MARKETING"}
+    result = compose.convert(MIXED, StillMarketing(), relationship_confirmed=True)
+    assert result["verdict"] == compose.NEEDS_CONTEXT
+    assert result["utility"] is None
+    assert "still reads the result as marketing" in result["reason"]
+
+
+def test_a_ratified_edit_is_returned(baseline):
+    result = compose.convert(MIXED, baseline, relationship_confirmed=True)
+    assert result["verdict"] == compose.SPLIT_RECOMMENDED
+    assert result["after"]["category"] == "UTILITY"
+
+
+@pytest.mark.parametrize("text", [
+    "Apply for your home loan and get *₹10,000* OFF on legal verification charges",
+    "Call now or schedule a callback to claim your benefits",
+    "Tap below to know more about the fund",
+    "Don't miss out — at just ₹999",
+])
+def test_rebuilt_promotional_vocabulary_sees_real_marketing(text):
+    from templatelab.policy import promotion_findings
+    assert promotion_findings({"body": text}), text
+
+
+@pytest.mark.parametrize("text", [
+    "Your invoice {{1}} is due on {{2}}.",
+    "Your order {{1}} has shipped. Expected delivery {{2}}.",
+    "Your property visit {{visit_id}} is confirmed.",
+])
+def test_rebuilt_vocabulary_does_not_fire_on_service_updates(text):
+    from templatelab.policy import promotion_findings
+    assert not promotion_findings({"body": text}), text

@@ -179,6 +179,7 @@ def create_demo(data_dir=None, predictor=None):
                 "removed": result.get("removed", []), "ambiguous": result.get("ambiguous", []),
                 "needs_human": result.get("needs_human", False),
                 "disputed_by_model": result.get("disputed_by_model", False),
+                "selection": result.get("selection"),
                 "findings": [{"code": f["code"], "component": f["component"], "message": f["message"]}
                              for f in (result.get("checklist") or {}).get("findings", [])],
                 # Without this a NEEDS_CONTEXT verdict says something is missing

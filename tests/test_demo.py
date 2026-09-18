@@ -200,3 +200,19 @@ def test_generation_returns_a_pasteable_template_json(monkeypatch):
         data = client.post('/api/generate', json={"task": "invoice is ready"}).json()
         assert data["template_json"]["templateName"] == "INVOICE_READY"
         assert data["template_json"]["messageBody"]["buttons"] == ["View invoice"]
+
+
+def test_conversion_reports_how_the_rewrite_was_chosen(monkeypatch):
+    """Selection detail is how a reader tells a chosen rewrite from the only one."""
+    from templatelab import demo
+    monkeypatch.setattr(demo, "convert", lambda record, model, **kw: {
+        "verdict": "SPLIT_RECOMMENDED", "reason": "ok", "method": "llm-select:openai_compatible",
+        "before": {"available": True, "utility_probability": .3},
+        "after": {"available": True, "utility_probability": .77},
+        "utility": {"body": "Your {{plan}} renewal is due {{date}}."}, "split_off": {"body": "20% off"},
+        "removed": [], "ambiguous": [], "needs_human": False, "checklist": {},
+        "selection": {"candidates": 5, "eligible": 3, "moved": 0.42}})
+    with TestClient(demo.create_demo(predictor=Predictor())) as client:
+        data = client.post('/api/convert', json={"body": "20% off your {{plan}} renewal {{date}}."}).json()
+        assert data["selection"] == {"candidates": 5, "eligible": 3, "moved": 0.42}
+        assert data["method"].startswith("llm-select")
